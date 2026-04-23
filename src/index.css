@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+/* 全局字体大小缩放 (Global Scale Adjustment) */
+html { font-size: 13px; }
+@media (max-width: 768px) { html { font-size: 15px; } }
+
+/* 自定义滚动条 (Custom Scrollbar) */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+body { 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+}
+
+/* --- 自定义动画定义 --- */
+
+/* 1. 动态气泡背景动画 (Blob Animation for background) */
+@keyframes blob { 
+    0% { transform: translate(0px, 0px) scale(1); } 
+    33% { transform: translate(50px, -60px) scale(1.2); } 
+    66% { transform: translate(-30px, 40px) scale(0.8); } 
+    100% { transform: translate(0px, 0px) scale(1); } 
+}
+@theme {
+  --animate-blob: blob 8s infinite;
+  --animate-delay-2000: 2s;
+  --animate-delay-4000: 4s;
+  --animate-in: in 0.5s both;
+  --animate-fade-in: fadeIn 0.5s both;
+}
+
+.animate-blob { animation: var(--animate-blob); } 
+.animation-delay-2000 { animation-delay: 2s; } 
+.animation-delay-4000 { animation-delay: 4s; }
+
+/* 2. 组件入场动画基础类 */
+.animate-in { 
+    animation-duration: 0.5s; 
+    animation-fill-mode: both; 
+}
+
+/* 3. 渐显动画 */
+.fade-in { animation-name: fadeIn; }
+@keyframes fadeIn { 
+    from { opacity: 0; } 
+    to { opacity: 1; } 
+}
+
+/* 4. 从底部滑入动画 (小距离) */
+.slide-in-from-bottom-4 { animation-name: slideInBottom4; }
+@keyframes slideInBottom4 { 
+    from { transform: translateY(1rem); } 
+    to { transform: translateY(0); } 
+}
+
+/* 5. 从底部滑入动画 (大距离) */
+.slide-in-from-bottom-8 { animation-name: slideInBottom8; }
+@keyframes slideInBottom8 { 
+    from { transform: translateY(2rem); } 
+    to { transform: translateY(0); } 
+}
+
+/* 6. 缩放入场动画 */
+.zoom-in-95 { animation-name: zoomIn95; }
+@keyframes zoomIn95 { 
+    from { opacity: 0; transform: scale(0.95); } 
+    to { opacity: 1; transform: scale(1); } 
+}
+
+/* 自定义滚动条工具类，给特定容器使用 */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
