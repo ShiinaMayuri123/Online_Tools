@@ -1,4 +1,4 @@
-import { AlignVerticalSpaceAround, HardDrive, Package } from 'lucide-react';
+import { AlignVerticalSpaceAround, HardDrive, Package, Bot } from 'lucide-react';
 
 /**
  * THEMES (主题配置)
@@ -109,5 +109,15 @@ export const TOOLS = [
     icon: Package,
     isPopular: false,
     isNew: true
+  },
+  {
+    id: 'robot-management-tools',
+    path: 'https://xiaoping666.cc.cd/',
+    title: 'Robot_Management_Tools',
+    description: '机器人管理工具集合。提供完整的机器人管理解决方案，包括配置管理、状态监控和远程控制等功能。',
+    icon: Bot,
+    isPopular: false,
+    isNew: true,
+    isExternal: true
   }
 ];

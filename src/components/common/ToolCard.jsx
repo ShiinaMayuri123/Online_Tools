@@ -8,11 +8,17 @@ import { useTheme } from '../../contexts/ThemeContext';
  */
 const ToolCard = ({ tool }) => {
   const { theme, themeKey } = useTheme();
-  
+
+  // 根据是否为外部链接选择不同的包装组件
+  const WrapperComponent = tool.isExternal ? 'a' : Link;
+  const linkProps = tool.isExternal
+    ? { href: tool.path, target: '_blank', rel: 'noopener noreferrer' }
+    : { to: tool.path };
+
   return (
-    // 使用 react-router-dom 的 Link 进行路由跳转
-    <Link 
-        to={tool.path} 
+    // 使用 react-router-dom 的 Link 进行路由跳转，或使用 a 标签打开外部链接
+    <WrapperComponent
+        {...linkProps}
         className={`group relative bg-white/90 backdrop-blur-xl rounded-3xl border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:-translate-y-1 transition-all duration-500 overflow-hidden ring-1 ring-slate-900/5 ${
             // 根据不同主题应用不同的悬浮阴影颜色
             themeKey === 'blue' ? 'hover:shadow-[0_20px_40px_-12px_rgba(59,130,246,0.2)]' : 
@@ -71,7 +77,7 @@ const ToolCard = ({ tool }) => {
               开始使用 <ArrowRight size={16} className="ml-1" />
           </div>
        </div>
-    </Link>
+    </WrapperComponent>
   );
 };
 
