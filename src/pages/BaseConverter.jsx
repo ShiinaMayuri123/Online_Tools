@@ -26,13 +26,14 @@ const BaseConverter = () => {
     setError('');
     if (!input.trim()) { setError('请输入数值'); return; }
     try {
-      const decimal = parseInt(input, fromBase);
-      if (isNaN(decimal)) throw new Error('无效输入');
+      const bigintValue = BigInt((fromBase === 10 ? '' : '0') + input.trim());
+      if (bigintValue < 0n) throw new Error('暂不支持负数');
+      const hexStr = bigintValue.toString(16).toUpperCase();
       setResults({
-        bin: decimal.toString(2),
-        oct: decimal.toString(8),
-        dec: decimal.toString(10),
-        hex: decimal.toString(16).toUpperCase(),
+        bin: bigintValue.toString(2),
+        oct: bigintValue.toString(8),
+        dec: bigintValue.toString(10),
+        hex: hexStr,
       });
     } catch {
       setError('输入的数值与所选进制不匹配');

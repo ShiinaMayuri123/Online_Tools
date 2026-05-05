@@ -74,3 +74,46 @@ body {
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/*
+ * Tailwind CSS 安全列表 (Safelist)
+ * 以下注释中的类名会被 Tailwind JIT 扫描器检测到，确保构建时不会被剔除。
+ * 这些类名来自 src/config/theme.jsx 的 THEMES 对象，通过动态模板字符串使用。
+ *
+ * 主题色类:
+ * bg-slate-700 bg-slate-800 bg-slate-100 bg-slate-400 bg-gray-400 bg-zinc-200
+ * text-slate-700 border-slate-300 ring-slate-500
+ * bg-indigo-600 bg-indigo-700 bg-indigo-50 bg-indigo-400 bg-blue-400 bg-blue-500 bg-sky-200 bg-sky-500
+ * text-indigo-600 border-indigo-200 ring-indigo-500
+ * bg-teal-600 bg-teal-700 bg-teal-50 bg-teal-400 bg-emerald-400 bg-emerald-500 bg-cyan-200 bg-cyan-500
+ * text-teal-600 border-teal-200 ring-teal-500
+ * bg-purple-600 bg-purple-700 bg-purple-50 bg-purple-400 bg-violet-400 bg-violet-500 bg-fuchsia-200 bg-fuchsia-500
+ * text-purple-600 border-purple-200 ring-purple-500
+ * bg-orange-600 bg-orange-700 bg-orange-50 bg-orange-400 bg-amber-500 bg-amber-600 bg-yellow-200 bg-yellow-500
+ * text-orange-600 border-orange-200 ring-orange-500
+ * bg-zinc-900 bg-zinc-100 bg-gray-500 bg-zinc-600 bg-stone-400 bg-stone-600 bg-neutral-700
+ * text-zinc-900 border-zinc-300 ring-zinc-600
+ * bg-rose-900 bg-rose-950 bg-rose-50 bg-rose-400 bg-red-500 bg-red-800 bg-orange-300 bg-orange-900
+ * text-rose-900 border-rose-200 ring-rose-600
+ *
+ * hover 变体:
+ * hover:bg-slate-800 hover:bg-indigo-700 hover:bg-teal-700 hover:bg-purple-700
+ * hover:bg-orange-700 hover:bg-black hover:bg-rose-950
+ * hover:border-slate-300 hover:border-indigo-200 hover:border-teal-200 hover:border-purple-200
+ * hover:border-orange-200 hover:border-zinc-300 hover:border-rose-200
+ *
+ * group-hover 变体:
+ * group-hover:text-slate-700 group-hover:text-indigo-600 group-hover:text-teal-600
+ * group-hover:text-purple-600 group-hover:text-orange-600 group-hover:text-zinc-900 group-hover:text-rose-900
+ * group-hover:bg-slate-800 group-hover:bg-indigo-700 group-hover:bg-teal-700
+ * group-hover:bg-purple-700 group-hover:bg-orange-700 group-hover:bg-black group-hover:bg-rose-950
+ *
+ * 渐变类:
+ * from-slate-700 via-gray-600 to-zinc-500
+ * from-indigo-600 via-blue-500 to-sky-500
+ * from-teal-600 via-emerald-500 to-cyan-500
+ * from-purple-600 via-violet-500 to-fuchsia-500
+ * from-orange-600 via-amber-600 to-yellow-500
+ * from-zinc-900 via-neutral-700 to-stone-600
+ * from-rose-900 via-red-800 to-orange-900
+ */

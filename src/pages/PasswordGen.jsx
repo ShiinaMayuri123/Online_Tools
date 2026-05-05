@@ -1,17 +1,32 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Home, HardDrive, Check, Copy, RefreshCw } from 'lucide-react';
+import { HardDrive, Check, Copy, RefreshCw } from 'lucide-react';
+import ToolLayout from '../components/common/ToolLayout';
 import { useTheme } from '../contexts/ThemeContext';
-import ThemeSwitcher from '../components/common/ThemeSwitcher';
+
+// 密码学安全的随机整数生成（范围 [0, max)）
+const secureRandomInt = (max) => {
+  const array = new Uint32Array(1);
+  const limit = Math.floor(0xFFFFFFFF / max) * max; // 拒绝采样，消除偏差
+  do { crypto.getRandomValues(array); } while (array[0] >= limit);
+  return array[0] % max;
+};
+
+// Fisher-Yates 洗牌算法（均匀分布）
+const shuffle = (arr) => {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = secureRandomInt(i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
 
 /**
  * PasswordGenTool: 密码生成器页面
  * 提供本地离线生成强密码的功能，保证安全。
  */
 const PasswordGenTool = () => {
-  const navigate = useNavigate(); // 用于页面跳转
-  const { theme, themeKey } = useTheme();
-  
+  const { theme } = useTheme();
+
   // 状态管理
   const [length, setLength] = useState(16); // 密码长度，默认 16 位
   // 密码包含的字符集选项
@@ -22,40 +37,35 @@ const PasswordGenTool = () => {
 
   // 核心功能：生成密码
   const generate = useCallback(() => {
-    // 定义各种字符集
-    const charset = { 
-        upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 
-        lower: 'abcdefghijklmnopqrstuvwxyz', 
-        numbers: '0123456789', 
-        symbols: '!@#$%^&*()_+~`|}{[]:;?><,./-=' 
+    const charset = {
+        upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+        lower: 'abcdefghijklmnopqrstuvwxyz',
+        numbers: '0123456789',
+        symbols: '!@#$%^&*()_+~`|}{[]:;?><,./-='
     };
     let chars = '';
     let result = '';
-    
-    // 找出当前用户勾选了哪些选项
+
     const types = Object.keys(options).filter(k => options[k]);
-    // 如果什么都没勾选，清空密码
     if (types.length === 0) return setPassword('');
-    
-    // 确保勾选的每种类型至少包含一个字符，增加安全性
-    types.forEach(type => { 
-        result += charset[type][Math.floor(Math.random() * charset[type].length)]; 
-        chars += charset[type]; 
+
+    // 确保勾选的每种类型至少包含一个字符
+    types.forEach(type => {
+        result += charset[type][secureRandomInt(charset[type].length)];
+        chars += charset[type];
     });
-    
-    // 填充剩余的长度
-    for (let i = result.length; i < length; i++) { 
-        result += chars.charAt(Math.floor(Math.random() * chars.length)); 
+
+    // 填充剩余长度
+    for (let i = result.length; i < length; i++) {
+        result += chars.charAt(secureRandomInt(chars.length));
     }
-    
-    // 将生成的字符串打乱顺序（洗牌算法）
-    result = result.split('').sort(() => 0.5 - Math.random()).join('');
-    
-    // 更新状态
+
+    // 使用 Fisher-Yates 均匀洗牌
+    result = shuffle(result.split('')).join('');
+
     setPassword(result);
-    // 将新密码加入历史记录，并保留最近 5 条
     setHistory(prev => [result, ...prev].slice(0, 5));
-    setCopied(false); // 重置复制状态
+    setCopied(false);
   }, [length, options]);
 
   // 组件挂载时或依赖项（长度、选项）改变时自动生成新密码
@@ -91,27 +101,8 @@ const PasswordGenTool = () => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col">
-      {/* 顶部导航栏 */}
-      <nav className="h-16 bg-white/80 backdrop-blur-xl border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 shrink-0 sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-            {/* 返回首页按钮 */}
-            <button onClick={() => navigate('/')} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
-                <Home size={20} />
-            </button>
-            <div className="h-6 w-px bg-slate-200"></div>
-            <h1 className="font-bold text-slate-700 flex items-center gap-2">
-                <div className={`p-1 rounded-lg ${themeKey === 'slate' ? 'bg-slate-700 text-white' : `${theme.primaryBg} text-white`}`}>
-                    <HardDrive size={16} />
-                </div>
-                <span className="hidden sm:inline">安全密码生成器</span>
-            </h1>
-        </div>
-        <div className="flex items-center gap-3"><ThemeSwitcher /></div>
-      </nav>
-      
-      {/* 主体内容 */}
-      <main className="flex-1 max-w-5xl mx-auto w-full p-6 lg:p-12 flex flex-col lg:flex-row gap-8">
+    <ToolLayout title="安全密码生成器" icon={<HardDrive size={14} strokeWidth={2.5} />}>
+      <div className="flex flex-col lg:flex-row gap-8">
         
         {/* 左侧：设置面板 */}
         <div className="flex-1 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -190,8 +181,8 @@ const PasswordGenTool = () => {
              </div>
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </ToolLayout>
   );
 };
 

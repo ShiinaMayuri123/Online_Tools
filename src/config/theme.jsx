@@ -1,4 +1,4 @@
-import { AlignVerticalSpaceAround, HardDrive, Package, Bot, Hash, Globe, Sparkles } from 'lucide-react';
+import { AlignVerticalSpaceAround, HardDrive, Package, Hash, Globe, Sparkles } from 'lucide-react';
 
 /**
  * THEMES (主题配置)
@@ -84,6 +84,34 @@ export const THEMES = {
  */
 export const TOOLS = [
   {
+    id: 'robot-test-record',
+    path: '/robot-record',
+    title: '机器人测试记录管理',
+    description: '管理和分析机器人测试记录。支持按MAC地址分组、智能搜索排序、导入导出、动态选项配置等功能。',
+    icon: Package,
+    isPopular: false,
+    isNew: false
+  },
+  {
+    id: 'new-api',
+    path: 'https://www.xiaoping888.cc.cd/',
+    title: 'NewAPI',
+    description: '新一代 API 管理平台。支持多模型聚合、令牌管理、用量统计等功能。',
+    icon: Sparkles,
+    isPopular: false,
+    isNew: true,
+    isExternal: true
+  },
+  {
+    id: 'ip-lookup',
+    path: '/ip-lookup',
+    title: '查看当前 IP',
+    description: '一键查询当前设备的公网 IP 地址及地理位置、ISP 等详细信息。',
+    icon: Globe,
+    isPopular: false,
+    isNew: true
+  },
+  {
     id: 'stitcher',
     path: '/stitcher',
     title: '长图拼接工具',
@@ -102,49 +130,11 @@ export const TOOLS = [
     isNew: false
   },
   {
-    id: 'robot-test-record',
-    path: '/robot-record',
-    title: '机器人测试记录管理',
-    description: '管理和分析机器人测试记录。支持按MAC地址分组、智能搜索排序、导入导出、动态选项配置等功能。',
-    icon: Package,
-    isPopular: false,
-    isNew: false
-  },
-  {
-    id: 'robot-management-tools',
-    path: 'https://xiaoping666.cc.cd/',
-    title: 'Robot_Management_Tools',
-    description: '机器人管理工具集合。提供完整的机器人管理解决方案，包括配置管理、状态监控和远程控制等功能。',
-    icon: Bot,
-    isPopular: false,
-    isNew: false,
-    isExternal: true
-  },
-  {
-    id: 'new-api',
-    path: 'https://www.xiaoping888.cc.cd/',
-    title: 'NewAPI',
-    description: '新一代 API 管理平台。支持多模型聚合、令牌管理、用量统计等功能。',
-    icon: Sparkles,
-    isPopular: false,
-    isNew: true,
-    isExternal: true
-  },
-  {
     id: 'base-converter',
     path: '/base-converter',
     title: '进制转换',
     description: '在二进制、八进制、十进制、十六进制之间自由转换，支持大数。',
     icon: Hash,
-    isPopular: false,
-    isNew: true
-  },
-  {
-    id: 'ip-lookup',
-    path: '/ip-lookup',
-    title: '查看当前 IP',
-    description: '一键查询当前设备的公网 IP 地址及地理位置、ISP 等详细信息。',
-    icon: Globe,
     isPopular: false,
     isNew: true
   }

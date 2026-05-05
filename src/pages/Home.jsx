@@ -47,7 +47,7 @@ const Home = () => {
             <div className={`text-white p-1.5 rounded-lg shadow-lg shadow-slate-900/20 transition-colors duration-500 ${themeKey === 'slate' ? 'bg-slate-700' : theme.primaryBg}`}>
                 <Wrench size={16} strokeWidth={2.5} />
             </div>
-            <span>Antigravity 的在线工具箱</span>
+            <span>ShiinaMayuri123/Online_Tools</span>
          </div>
          <div className="flex items-center gap-4">
              {/* 宽屏时显示主题切换 */}
@@ -75,11 +75,12 @@ const Home = () => {
 
           {/* 大标题 */}
           <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter text-slate-900 mb-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100 drop-shadow-sm leading-tight">
-            我的在线<br className="sm:hidden" />
+           我的在线<br className="sm:hidden" />
             <span className={`relative whitespace-nowrap bg-clip-text text-transparent bg-gradient-to-r ${theme.gradientTitle} animate-gradient-x`}>
                <span className="ml-2">工具箱</span>
                <span className={`absolute -bottom-2 left-0 right-0 h-[6px] rounded-full blur-sm opacity-30 ${theme.primaryBg}`}></span>
             </span>
+
           </h1>
           <p className="text-lg sm:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200 font-medium">
               为您精心打造的实用工具集合。<br className="hidden sm:block" />简单、高效、保护隐私，只为更好的工作效率。

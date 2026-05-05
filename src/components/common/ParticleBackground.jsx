@@ -86,13 +86,13 @@ const ParticleBackground = () => {
            const lineDist = Math.sqrt(lineDx*lineDx + lineDy*lineDy);
            
            if (lineDist < 130) {
-             // 根据当前的 rgba 颜色截取 baseColor
-             const baseColor = theme.particleColor.includes('rgba') 
-                ? theme.particleColor.substring(0, theme.particleColor.lastIndexOf(',')) 
+             // 根据当前的 rgba 颜色截取 baseColor（去掉最后一个逗号及之后的内容，再加上新的透明度）
+             const baseColor = theme.particleColor.includes('rgba')
+                ? theme.particleColor.substring(0, theme.particleColor.lastIndexOf(','))
                 : theme.particleColor.replace(')', '');
-                
+
              // 线条越远越透明
-             ctx.strokeStyle = `${baseColor}, ${0.4 * (1 - lineDist / 130)})`; 
+             ctx.strokeStyle = `${baseColor}, ${0.4 * (1 - lineDist / 130)})`;
              ctx.lineWidth = 1.5; 
              ctx.beginPath(); 
              ctx.moveTo(p.x, p.y); 

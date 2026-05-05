@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Home, AlignVerticalSpaceAround, AlignHorizontalSpaceAround, Download, Upload, Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Minus } from 'lucide-react';
+import { AlignVerticalSpaceAround, AlignHorizontalSpaceAround, Download, Upload, Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Minus } from 'lucide-react';
 import { jsPDF } from 'jspdf';
+import ToolLayout from '../components/common/ToolLayout';
 import { useTheme } from '../contexts/ThemeContext';
-import ThemeSwitcher from '../components/common/ThemeSwitcher';
 import ExportModal from '../components/stitcher/ExportModal';
 import { stitchImages } from '../utils/imageUtils';
 
@@ -81,8 +80,7 @@ const StitcherPreview = ({ images, direction, zoom }) => {
  * StitcherTool 页面：长图拼接工具主页面
  */
 const StitcherTool = () => {
-  const navigate = useNavigate(); 
-  const { theme, themeKey } = useTheme();
+  const { theme } = useTheme();
   
   // 状态管理
   const [images, setImages] = useState([]); // 用户上传的图片列表
@@ -92,7 +90,7 @@ const StitcherTool = () => {
   const [isProcessing, setIsProcessing] = useState(false); // 是否正在处理（拼接/下载）
 
   // 当清空图片时，重置缩放比例
-  useEffect(() => { if (images.length === 0) setZoom(1); }, [images.length, direction]);
+  useEffect(() => { if (images.length === 0) setZoom(1); }, [images.length]);
 
   // 处理图片上传（同时支持拖拽和点击上传）
   const handleFileUpload = async (files) => { 
@@ -111,12 +109,12 @@ const StitcherTool = () => {
           // 使用 Promise 等待图片加载完成，以便获取真实宽高
           await new Promise((resolve) => { img.onload = () => resolve(); }); 
           
-          newImages.push({ 
-              id: Math.random().toString(36).substr(2, 9), 
-              file, 
-              previewUrl: url, 
-              width: img.width, 
-              height: img.height 
+          newImages.push({
+              id: Math.random().toString(36).substring(2, 11),
+              file,
+              previewUrl: url,
+              width: img.width,
+              height: img.height
           }); 
       } 
       // 追加到已有图片列表中
@@ -176,39 +174,24 @@ const StitcherTool = () => {
       } 
   };
 
+  const exportButton = (
+    <button
+        onClick={() => setIsExportOpen(true)}
+        disabled={images.length === 0}
+        className={`px-4 py-2 rounded-full text-sm font-bold text-white shadow-lg shadow-slate-200 transition-all flex items-center gap-2 disabled:opacity-50 disabled:shadow-none ${theme.primaryBg} ${theme.primaryHover}`}
+    >
+        <Download size={16} />
+        <span className="hidden sm:inline">导出</span>
+    </button>
+  );
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 selection:bg-slate-200 selection:text-slate-900">
-      
-      {/* 顶部导航栏 */}
-      <nav className="h-16 bg-white/80 backdrop-blur-xl border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 shrink-0 sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-            <button onClick={() => navigate('/')} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
-                <Home size={20} />
-            </button>
-            <div className="h-6 w-px bg-slate-200"></div>
-            <h1 className="font-bold text-slate-700 flex items-center gap-2">
-                <div className={`p-1 rounded-lg ${themeKey === 'slate' ? 'bg-slate-700 text-white' : `${theme.primaryBg} text-white`}`}>
-                    <AlignVerticalSpaceAround size={16} />
-                </div>
-                <span className="hidden sm:inline">长图拼接工具</span>
-            </h1>
-        </div>
-        <div className="flex items-center gap-3">
-            <ThemeSwitcher />
-            {/* 导出按钮，必须有图片才能点击 */}
-            <button 
-                onClick={() => setIsExportOpen(true)} 
-                disabled={images.length === 0} 
-                className={`px-4 py-2 rounded-full text-sm font-bold text-white shadow-lg shadow-slate-200 transition-all flex items-center gap-2 disabled:opacity-50 disabled:shadow-none ${theme.primaryBg} ${theme.primaryHover}`}
-            >
-                <Download size={16} />
-                <span className="hidden sm:inline">导出</span>
-            </button>
-        </div>
-      </nav>
-      
-      {/* 主体内容：左侧面板 + 右侧预览 */}
-      <main className="flex-1 overflow-hidden flex flex-col lg:flex-row relative">
+    <ToolLayout
+      title="长图拼接工具"
+      icon={<AlignVerticalSpaceAround size={14} strokeWidth={2.5} />}
+      navActions={exportButton}
+      contentClassName="pt-16 flex-1 overflow-hidden flex flex-col lg:flex-row relative"
+    >
          
          {/* 左侧控制栏 */}
          <aside className="w-full lg:w-96 bg-white border-r border-slate-200 flex flex-col z-20 shadow-xl shadow-slate-200/50">
@@ -231,7 +214,7 @@ const StitcherTool = () => {
                <input type="file" id="image-upload" multiple accept="image/*" className="hidden" onChange={onFileChange} />
                <label 
                    htmlFor="image-upload" 
-                   className={`group relative flex flex-col items-center justify-center border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300 overflow-hidden ${images.length === 0 ? 'h-64 bg-slate-50 border-slate-300 hover:border-slate-400' : `h-20 bg-slate-50 border-slate-200 hover:bg-white ${themeKey === 'slate' ? 'hover:border-slate-400' : `hover:${theme.borderAccent}`}`}`}
+                   className={`group relative flex flex-col items-center justify-center border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300 overflow-hidden ${images.length === 0 ? 'h-64 bg-slate-50 border-slate-300 hover:border-slate-400' : `h-20 bg-slate-50 border-slate-200 hover:bg-white hover:${theme.borderAccent}`}`}
                >
                   {images.length === 0 ? (
                       <>
@@ -296,11 +279,10 @@ const StitcherTool = () => {
                )}
             </div>
          </div>
-      </main>
-      
+
       {/* 导出设置模态框 */}
       <ExportModal isOpen={isExportOpen} onClose={() => setIsExportOpen(false)} onConfirm={handleExport} isProcessing={isProcessing} images={images} direction={direction} theme={theme} />
-    </div>
+    </ToolLayout>
   );
 };
 

@@ -1,15 +1,15 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { THEMES } from '../config/theme';
 
 /**
  * ThemeContext
  * 创建一个 React Context，用于在整个应用中共享主题状态。
- * 初始值设为 'slate' 主题。
+ * 主题选择会持久化到 localStorage。
  */
-export const ThemeContext = createContext({ 
-    themeKey: 'slate', 
-    theme: THEMES.slate, 
-    setThemeKey: () => {} 
+export const ThemeContext = createContext({
+    themeKey: 'slate',
+    theme: THEMES.slate,
+    setThemeKey: () => {}
 });
 
 /**
@@ -17,14 +17,21 @@ export const ThemeContext = createContext({
  * 用于包裹整个应用，提供主题状态和切换主题的方法。
  */
 export const ThemeProvider = ({ children }) => {
-    // 使用 useState 存储当前的主题标识 (默认 'slate')
-    const [themeKey, setThemeKey] = useState('slate');
-    
+    const [themeKey, setThemeKey] = useState(() => {
+        const saved = localStorage.getItem('theme');
+        return saved && THEMES[saved] ? saved : 'slate';
+    });
+
+    const handleSetThemeKey = (key) => {
+        setThemeKey(key);
+        localStorage.setItem('theme', key);
+    };
+
     return (
-        <ThemeContext.Provider value={{ 
-            themeKey, 
-            theme: THEMES[themeKey], // 根据 key 获取具体的主题配置对象
-            setThemeKey 
+        <ThemeContext.Provider value={{
+            themeKey,
+            theme: THEMES[themeKey],
+            setThemeKey: handleSetThemeKey
         }}>
             {children}
         </ThemeContext.Provider>
