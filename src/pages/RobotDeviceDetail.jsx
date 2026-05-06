@@ -20,6 +20,7 @@ const RESULT_OPTIONS = [
   { value: '待定', color: 'bg-yellow-100 text-yellow-700' },
   { value: '异常', color: 'bg-red-100 text-red-700' },
 ];
+const ABNORMAL_TYPE_OPTIONS = ['屏幕', 'RGBD', '雷达', '电源板', '核心板', '转接板', '电机'];
 
 const generateId = () => {
   const bytes = new Uint8Array(9);
@@ -145,7 +146,7 @@ const RobotDeviceDetail = () => {
       <ToolLayout
         title="设备详情"
         icon={<Package size={14} strokeWidth={2.5} />}
-        contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-3 sm:px-6 lg:px-8 max-w-3xl lg:max-w-4xl mx-auto relative z-10"
+        contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[90%] lg:max-w-[85%] xl:max-w-[80%] mx-auto relative z-10"
       >
         <div className="text-center py-20">
           <Loader2 size={32} className="animate-spin mx-auto text-slate-400" />
@@ -160,7 +161,7 @@ const RobotDeviceDetail = () => {
     <ToolLayout
       title="设备详情"
       icon={<Package size={14} strokeWidth={2.5} />}
-      contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-3 sm:px-6 lg:px-8 max-w-3xl lg:max-w-4xl mx-auto relative z-10 space-y-4 sm:space-y-6"
+      contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[90%] lg:max-w-[85%] xl:max-w-[80%] mx-auto relative z-10 space-y-4 sm:space-y-6"
     >
       {/* MAC 地址标题 */}
       <div className="flex items-center gap-2 sm:gap-3">
@@ -323,6 +324,11 @@ const RobotDeviceDetail = () => {
                         <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${resultStyle}`}>
                           {record.result}
                         </span>
+                        {record.result === '异常' && record.abnormalType && (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-50 text-red-600 border border-red-200">
+                            {record.abnormalType}
+                          </span>
+                        )}
                       </div>
                       <div className="flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1 text-xs text-slate-500">
                         <span>人员: <span className="font-medium text-slate-700">{record.tester}</span></span>
@@ -370,10 +376,11 @@ const AddTestRecordModal = ({ onClose, onSave, theme }) => {
   const [endTime, setEndTime] = useState(defaultTime);
   const [project, setProject] = useState(PROJECT_OPTIONS[0]);
   const [result, setResult] = useState(RESULT_OPTIONS[0].value);
+  const [abnormalType, setAbnormalType] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({ tester, startTime, endTime, project, result });
+    onSave({ tester, startTime, endTime, project, result, abnormalType: result === '异常' ? abnormalType : '' });
   };
 
   return (
@@ -438,7 +445,7 @@ const AddTestRecordModal = ({ onClose, onSave, theme }) => {
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => setResult(opt.value)}
+                  onClick={() => { setResult(opt.value); if (opt.value !== '异常') setAbnormalType(''); }}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
                     result === opt.value
                       ? `${opt.color} border-current`
@@ -450,6 +457,29 @@ const AddTestRecordModal = ({ onClose, onSave, theme }) => {
               ))}
             </div>
           </div>
+
+          {/* 异常类型（仅当结果为"异常"时显示） */}
+          {result === '异常' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">异常类型</label>
+              <div className="flex flex-wrap gap-2">
+                {ABNORMAL_TYPE_OPTIONS.map(type => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setAbnormalType(type)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-all ${
+                      abnormalType === type
+                        ? 'bg-red-100 text-red-700 border-red-300'
+                        : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* 按钮 */}
           <div className="flex gap-3 pt-3 sm:pt-4">

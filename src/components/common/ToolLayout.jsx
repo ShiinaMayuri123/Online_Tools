@@ -18,7 +18,7 @@ const ToolLayout = ({ title, icon, children, navActions, contentClassName }) => 
   const { user, role, logout } = useAuth();
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col">
       {/* 顶部导航栏 */}
       <nav className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-12 bg-white/60 backdrop-blur-md border-b border-white/40">
         {/* 左侧：返回按钮 + 工具标题 */}
@@ -68,12 +68,12 @@ const ToolLayout = ({ title, icon, children, navActions, contentClassName }) => 
       </nav>
 
       {/* 主体内容区域 */}
-      <main className={contentClassName || "pt-24 pb-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto relative z-10"}>
+      <main className={contentClassName || "pt-24 pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[90%] lg:max-w-[85%] xl:max-w-[80%] mx-auto relative z-10 flex-grow"}>
         {children}
       </main>
 
       {/* 页脚 */}
-      <footer className="border-t border-slate-200/50 bg-white/40 backdrop-blur-xl relative z-20">
+      <footer className="border-t border-slate-200/50 bg-white/40 backdrop-blur-xl relative z-0">
         <div className="max-w-7xl mx-auto px-6 py-6 text-center">
           <p className="text-slate-400 text-xs font-medium">Made With ❤️</p>
         </div>

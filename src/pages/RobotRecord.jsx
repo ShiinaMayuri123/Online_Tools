@@ -4,6 +4,7 @@ import { Package, Upload, Copy, HardDrive, Trash2, Search, Loader2 } from 'lucid
 import { collection, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import ToolLayout from '../components/common/ToolLayout';
+import FaultPieChart from '../components/common/FaultPieChart';
 import { useTheme } from '../contexts/ThemeContext';
 
 /**
@@ -108,7 +109,7 @@ const RobotRecord = () => {
     <ToolLayout
       title="机器人测试记录管理"
       icon={<Package size={14} strokeWidth={2.5} />}
-      contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-3 sm:px-6 lg:px-8 max-w-3xl lg:max-w-4xl mx-auto relative z-10 space-y-4 sm:space-y-6"
+      contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[90%] lg:max-w-[85%] xl:max-w-[80%] mx-auto relative z-10 space-y-4 sm:space-y-6"
     >
       {/* 搜索 + 导入 */}
       <div className="bg-white/80 backdrop-blur-sm p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm">
@@ -133,6 +134,78 @@ const RobotRecord = () => {
         </div>
       </div>
 
+      {/* 故障类型分布饼图 + 设备列表 - 桌面端并排显示 */}
+      {!loading && devices.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          {/* 左侧：饼图（占 1/3） */}
+          <div className="lg:col-span-1">
+            {(() => {
+              const allRecords = devices.flatMap(d => d.testRecords || []);
+              return allRecords.filter(r => r.result === '异常' && r.abnormalType).length > 0 ? (
+                <FaultPieChart records={allRecords} />
+              ) : (
+                <div className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6">
+                  <h2 className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
+                    故障类型分布
+                  </h2>
+                  <div className="text-center py-8 text-slate-400">
+                    <p className="text-sm">暂无异常记录</p>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* 右侧：设备列表（占 2/3） */}
+          <div className="lg:col-span-2">
+            {/* 设备列表 */}
+            {filteredDevices.length > 0 ? (
+              <div className="space-y-2 sm:space-y-3">
+                {filteredDevices.map(device => (
+                  <div
+                    key={device.mac}
+                    onClick={() => navigate(`/robot-record/${encodeURIComponent(device.mac)}`)}
+                    className="group bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:border-slate-300 hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${theme.bgLight} ${theme.textAccent}`}>
+                        <HardDrive size={18} />
+                      </div>
+                      <div>
+                        <span className="font-mono text-sm sm:text-base font-bold text-slate-900">{device.mac}</span>
+                        {device.model && (
+                          <span className="ml-2 sm:ml-3 text-xs text-slate-500">{device.model}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => handleCopy(device.mac)}
+                        className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
+                        title="复制 MAC 地址"
+                      >
+                        <Copy size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(device.mac)}
+                        className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-500 transition-colors"
+                        title="删除设备"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-slate-400">
+                <p className="text-sm">未找到匹配的设备</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 加载状态 */}
       {loading && (
         <div className="text-center py-12">
@@ -154,54 +227,6 @@ const RobotRecord = () => {
           >
             导入新设备
           </button>
-        </div>
-      )}
-
-      {/* 设备列表 */}
-      {!loading && filteredDevices.length > 0 && (
-        <div className="space-y-2 sm:space-y-3">
-          {filteredDevices.map(device => (
-            <div
-              key={device.mac}
-              onClick={() => navigate(`/robot-record/${encodeURIComponent(device.mac)}`)}
-              className="group bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:border-slate-300 hover:shadow-md transition-all"
-            >
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${theme.bgLight} ${theme.textAccent}`}>
-                  <HardDrive size={18} />
-                </div>
-                <div>
-                  <span className="font-mono text-sm sm:text-base font-bold text-slate-900">{device.mac}</span>
-                  {device.model && (
-                    <span className="ml-2 sm:ml-3 text-xs text-slate-500">{device.model}</span>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <button
-                  onClick={() => handleCopy(device.mac)}
-                  className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
-                  title="复制 MAC 地址"
-                >
-                  <Copy size={16} />
-                </button>
-                <button
-                  onClick={() => handleDelete(device.mac)}
-                  className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-500 transition-colors"
-                  title="删除设备"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 有设备但搜索无结果 */}
-      {!loading && devices.length > 0 && filteredDevices.length === 0 && (
-        <div className="text-center py-12 text-slate-400">
-          <p className="text-sm">未找到匹配的设备</p>
         </div>
       )}
 
