@@ -105,8 +105,8 @@ export const TOOLS = [
   {
     id: 'ip-lookup',
     path: '/ip-lookup',
-    title: '查看当前 IP',
-    description: '一键查询当前设备的公网 IP 地址及地理位置、ISP 等详细信息。',
+    title: 'IP 一致性查询',
+    description: '多源并发查询公网 IP，自动比对一致性，检测代理/VPN 状态，WebRTC 本地 IP 探测。',
     icon: Globe,
     isPopular: false,
     isNew: true
