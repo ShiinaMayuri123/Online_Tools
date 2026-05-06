@@ -48,7 +48,7 @@ const Admin = () => {
     <ToolLayout
       title="管理后台"
       icon={<Shield size={14} strokeWidth={2.5} />}
-      contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[90%] lg:max-w-[85%] xl:max-w-[80%] mx-auto relative z-10 space-y-6"
+      contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[90%] lg:max-w-[85%] xl:max-w-7xl mx-auto relative z-10 space-y-6"
     >
       {/* 提示信息 */}
       <div className="bg-blue-50 border-l-4 border-blue-500 rounded-xl p-4 flex items-start gap-3 shadow-sm animate-in fade-in duration-300">

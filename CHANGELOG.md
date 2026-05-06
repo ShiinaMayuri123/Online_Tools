@@ -1,5 +1,29 @@
 # 变更日志 (CHANGELOG)
 
+## [2026-05-07] IP 一致性查询工具升级 + 布局优化 + Bug 修复
+
+### 新增
+- **IP 一致性查询工具** (`pages/IpLookup.jsx`): 从单一 IP 查询升级为多源并发一致性查询
+  - 10 个 CORS 友好的 IPv4 API 并发查询（ipify、ip-api.com、httpbin、BigDataCloud、ip.sb、ifconfig.me、jsonip.com、ipwho.is、seeip.org、WTF Is My IP）
+  - 多数投票算法确定真实出口 IP
+  - 渐进式加载：每个 API 返回立即显示，进度条实时更新
+  - 地理位置一致性判断：IPv4/IPv6 指向同一位置时显示蓝色"位置一致"而非琥珀色"差异"
+  - 代理/VPN 泄漏检测：少数派 IP 用琥珀色警告
+  - WebRTC 本地 IP 检测
+  - 一键复制全部查询结果
+  - 外部深入检测工具链接（BrowserScan、BrowserLeaks、IP2Location）
+
+### 变更
+- `ToolLayout.jsx`: 内容区最大宽度从 `xl:max-w-[85%]` 改为 `xl:max-w-7xl` (1280px)，防止超宽屏内容过宽
+- `Admin.jsx`: 同步布局上限改为 `xl:max-w-7xl`
+- `RobotRecord.jsx`: 同步布局上限改为 `xl:max-w-7xl`
+- `RobotDeviceDetail.jsx`: 同步布局上限改为 `xl:max-w-7xl`（2 处）
+
+### Bug 修复
+- `IpLookup.jsx`: 修复 `normalizeIp` 函数中端口剥离正则 `:\d+$` 会错误截断 IPv6 地址的问题（如 `2001:db8::1` 的末尾段被当作端口删除）
+
+---
+
 ## [2026-05-06] 代码质量优化 + UI 增强
 
 ### 新增

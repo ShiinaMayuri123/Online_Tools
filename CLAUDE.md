@@ -45,7 +45,7 @@ src/
 │   ├── RobotRecord.jsx           # 机器人设备列表（Firestore）
 │   ├── RobotDeviceDetail.jsx     # 设备详情 + 测试记录（Firestore）
 │   ├── BaseConverter.jsx         # 进制转换
-│   └── IpLookup.jsx              # 查看当前 IP
+│   └── IpLookup.jsx              # IP 一致性查询（多源并发、多数投票、代理检测）
 ├── utils/
 │   └── imageUtils.js    # 图片拼接核心算法
 ├── firebase.js          # Firebase 初始化（Auth + Firestore）

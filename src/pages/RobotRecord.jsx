@@ -260,7 +260,7 @@ const RobotRecord = () => {
     <ToolLayout
       title="机器人测试记录管理"
       icon={<Package size={14} strokeWidth={2.5} />}
-      contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[95%] lg:max-w-[90%] xl:max-w-[85%] mx-auto relative z-10 space-y-4 sm:space-y-6"
+      contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[95%] lg:max-w-[90%] xl:max-w-7xl mx-auto relative z-10 space-y-4 sm:space-y-6"
     >
       {/* 统计概览栏 */}
       {!loading && devices.length > 0 && (

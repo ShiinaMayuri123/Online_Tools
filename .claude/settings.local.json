@@ -1,4 +1,5 @@
 {
+  "language": "chinese",
   "permissions": {
     "allow": [
       "WebFetch(domain:skills.sh)",
@@ -6,7 +7,26 @@
       "Bash(python3 \"C:\\\\Users\\\\xxp20\\\\.claude\\\\skills\\\\ui-ux-pro-max\\\\scripts\\\\search.py\" \"accordion collapsible code block command list\" --domain ux -n 10)",
       "Bash(python *)",
       "Read(//c/Users/xxp20/.claude/src/**)",
-      "Read(//c/Users/xxp20/src/**)"
+      "Read(//c/Users/xxp20/src/**)",
+      "Bash(npx vite *)",
+      "Bash(curl -s --max-time 5 \"https://ping0.cc/geo\")",
+      "Bash(curl -s --max-time 5 \"https://ippure.com/api/json\")",
+      "Bash(curl -4 -s --max-time 5 \"https://1.1.1.1/cdn-cgi/trace\")",
+      "Bash(curl -s --max-time 5 \"https://icanhazip.com\")",
+      "Bash(curl -s --max-time 5 \"https://wtfismyip.com/json\")",
+      "Bash(curl -s --max-time 5 \"https://jsonip.com\")",
+      "Bash(curl -4 -s --max-time 5 \"https://api4.ipify.org?format=json\")",
+      "Bash(curl -4 -s --max-time 5 \"https://api.ip.sb/geoip\")",
+      "Bash(curl -sI --max-time 5 \"https://1.1.1.1/cdn-cgi/trace\")",
+      "Bash(curl -sI --max-time 5 \"https://api4.ipify.org?format=json\")",
+      "Bash(curl -4 -s --max-time 5 \"https://ip-api.com/json\")",
+      "Bash(curl -s --max-time 5 \"https://ipwho.is/\")",
+      "Bash(curl -sI --max-time 5 \"https://ipwho.is/\")",
+      "Bash(curl -s --max-time 5 \"https://1.1.1.1/cdn-cgi/trace\")",
+      "Bash(curl -sI -H \"Origin: http://localhost:5173\" --max-time 5 \"https://1.1.1.1/cdn-cgi/trace\")",
+      "Bash(curl -s --max-time 5 \"https://api.ipgeolocation.io/ipgeo\")",
+      "Bash(curl -s --max-time 5 \"https://ipinfo.io/json\")",
+      "Bash(curl -sI -H \"Origin: http://localhost:5173\" --max-time 5 \"https://ipinfo.io/json\")"
     ]
   }
 }

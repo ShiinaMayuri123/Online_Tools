@@ -68,7 +68,7 @@ const ToolLayout = ({ title, icon, children, navActions, contentClassName }) => 
       </nav>
 
       {/* 主体内容区域 */}
-      <main className={contentClassName || "pt-24 pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[95%] lg:max-w-[90%] xl:max-w-[85%] mx-auto relative z-10 flex-grow"}>
+      <main className={contentClassName || "pt-24 pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[95%] lg:max-w-[90%] xl:max-w-7xl mx-auto relative z-10 flex-grow"}>
         {children}
       </main>
 

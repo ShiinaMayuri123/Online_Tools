@@ -106,7 +106,7 @@ online_toolbox_vite/
 - **RobotRecord**: 机器人设备列表，以 MAC 地址为唯一标识
 - **RobotDeviceDetail**: 设备信息管理 + 测试记录管理，实时同步
 - **BaseConverter**: 二进制/八进制/十进制/十六进制互相转换，支持大数
-- **IpLookup**: 通过公共 API 查询公网 IP 及地理位置
+- **IpLookup**: IP 一致性查询，多源并发查询 + 多数投票确定真实出口 IP，检测代理/VPN 泄漏，支持地理位置一致性判断
 
 ### 8. 工具函数 (`utils/imageUtils.js`)
 - `stitchImages`: 核心图片拼接算法，使用 Canvas 绘制
