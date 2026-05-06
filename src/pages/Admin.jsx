@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Shield, Users, Loader2, ExternalLink } from 'lucide-react';
+import { Shield, Users, ExternalLink } from 'lucide-react';
 import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import ToolLayout from '../components/common/ToolLayout';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -28,12 +29,14 @@ const Admin = () => {
     return () => unsubscribe();
   }, []);
 
-  // 修改角色
-  const handleRoleChange = async (uid, newRole) => {
+  // 修改角色（带确认）
+  const handleRoleChange = async (uid, newRole, currentRole) => {
     if (uid === user?.uid) {
       alert('不能修改自己的角色');
       return;
     }
+    const roleLabel = newRole === 'admin' ? '管理员' : '普通用户';
+    if (!window.confirm(`确定要将该用户的角色修改为「${roleLabel}」吗？`)) return;
     try {
       await updateDoc(doc(db, 'users', uid), { role: newRole });
     } catch (e) {
@@ -48,7 +51,7 @@ const Admin = () => {
       contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[90%] lg:max-w-[85%] xl:max-w-[80%] mx-auto relative z-10 space-y-6"
     >
       {/* 提示信息 */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+      <div className="bg-blue-50 border-l-4 border-blue-500 rounded-xl p-4 flex items-start gap-3 shadow-sm animate-in fade-in duration-300">
         <div className="text-blue-500 mt-0.5 shrink-0">
           <ExternalLink size={16} />
         </div>
@@ -64,24 +67,24 @@ const Admin = () => {
       </div>
 
       {/* 标题 */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 animate-in fade-in duration-300 delay-100">
         <Users size={20} className="text-slate-400" />
         <h2 className="text-lg font-bold text-slate-900">用户管理</h2>
         <span className="text-sm text-slate-400">({users.length} 人)</span>
       </div>
 
       {/* 加载状态 */}
-      {loading && (
-        <div className="text-center py-12">
-          <Loader2 size={32} className="animate-spin mx-auto text-slate-400" />
-        </div>
-      )}
+      {loading && <LoadingSpinner />}
 
       {/* 用户列表 */}
       {!loading && (
         <div className="space-y-3">
-          {users.map(u => (
-            <div key={u.id} className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200 shadow-sm p-4 flex items-center justify-between gap-4">
+          {users.map((u, i) => (
+            <div
+              key={u.id}
+              className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200 shadow-md p-4 flex items-center justify-between gap-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 animate-in fade-in slide-in-from-bottom-4"
+              style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'both' }}
+            >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-sm font-bold text-slate-900 truncate">{u.email}</span>
@@ -99,9 +102,9 @@ const Admin = () => {
                 {/* 角色切换 */}
                 <select
                   value={u.role || 'user'}
-                  onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                  onChange={(e) => handleRoleChange(u.id, e.target.value, u.role)}
                   disabled={u.id === user?.uid}
-                  className="px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 disabled:opacity-50"
+                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-slate-300 disabled:opacity-50 cursor-pointer"
                 >
                   <option value="user">普通用户</option>
                   <option value="admin">管理员</option>

@@ -23,7 +23,10 @@ src/
 │   │   ├── ToolCard.jsx          # 首页工具卡片（新标签页打开）
 │   │   ├── ThemeSwitcher.jsx     # 主题切换下拉菜单
 │   │   ├── ParticleBackground.jsx # Canvas 粒子动画背景
-│   │   └── ContactModal.jsx      # 联系开发者弹窗
+│   │   ├── ContactModal.jsx      # 联系开发者弹窗
+│   │   ├── Modal.jsx             # 通用模态框组件（遮罩层+入场动画）
+│   │   ├── LoadingSpinner.jsx    # 通用加载指示器
+│   │   └── FaultPieChart.jsx     # 故障类型饼图
 │   └── stitcher/        # 长图拼接专属组件
 │       └── ExportModal.jsx       # 导出设置弹窗
 ├── config/
@@ -31,6 +34,8 @@ src/
 ├── contexts/
 │   ├── ThemeContext.jsx  # 全局主题状态 (Context API)
 │   └── AuthContext.jsx   # 全局认证状态 (Firebase Auth)
+├── hooks/
+│   └── useClipboard.js  # 剪贴板复制自定义 Hook
 ├── pages/               # 页面组件（每个工具一个文件）
 │   ├── Home.jsx                  # 首页
 │   ├── Login.jsx                 # 登录页
@@ -80,6 +85,12 @@ npm run preview  # 预览打包结果
 - 使用 Tailwind CSS 类名，不写自定义 CSS（除非必要）
 - 组件内使用 `useState`/`useEffect` 管理状态
 - 工具页面统一使用 `ToolLayout` 组件提供一致的导航栏和布局
+
+### 公共模块
+- `Modal` — 通用模态框，接受 `isOpen`、`onClose`、`children`、`maxWidth` 属性
+- `LoadingSpinner` — 全页加载指示器
+- `useClipboard` — 剪贴板复制 Hook，返回 `{ copiedKey, copy }`，支持多按钮独立状态
+- 复制功能统一使用 `useClipboard`，弹窗统一使用 `Modal`，加载状态统一使用 `LoadingSpinner`
 
 ### 注意事项
 - 文件使用 CRLF 换行符 (Windows)

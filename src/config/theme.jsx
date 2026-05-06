@@ -32,12 +32,12 @@ export const THEMES = {
   },
   emerald: {
     name: 'Aurora',
-    primaryBg: 'bg-teal-600', primaryHover: 'hover:bg-teal-700',
-    textRaw: 'teal', textAccent: 'text-teal-600', bgLight: 'bg-teal-50',
-    borderAccent: 'border-teal-200', ringFocus: 'ring-teal-500',
-    gradientTitle: 'from-teal-600 via-emerald-500 to-cyan-500',
-    particleColor: 'rgba(13, 148, 136, 0.6)',
-    orb1: 'bg-teal-400', orb2: 'bg-emerald-400', orb3: 'bg-cyan-200'
+    primaryBg: 'bg-emerald-600', primaryHover: 'hover:bg-emerald-700',
+    textRaw: 'emerald', textAccent: 'text-emerald-600', bgLight: 'bg-emerald-50',
+    borderAccent: 'border-emerald-200', ringFocus: 'ring-emerald-500',
+    gradientTitle: 'from-emerald-600 via-teal-500 to-cyan-400',
+    particleColor: 'rgba(16, 185, 129, 0.6)',
+    orb1: 'bg-emerald-400', orb2: 'bg-teal-400', orb3: 'bg-cyan-200'
   },
   violet: {
     name: 'Neon',
@@ -53,9 +53,9 @@ export const THEMES = {
     primaryBg: 'bg-orange-600', primaryHover: 'hover:bg-orange-700',
     textRaw: 'orange', textAccent: 'text-orange-600', bgLight: 'bg-orange-50',
     borderAccent: 'border-orange-200', ringFocus: 'ring-orange-500',
-    gradientTitle: 'from-orange-600 via-amber-600 to-yellow-500',
+    gradientTitle: 'from-orange-500 via-rose-500 to-pink-500',
     particleColor: 'rgba(234, 88, 12, 0.6)',
-    orb1: 'bg-orange-400', orb2: 'bg-amber-500', orb3: 'bg-yellow-200'
+    orb1: 'bg-orange-400', orb2: 'bg-rose-400', orb3: 'bg-pink-200'
   },
   zinc: {
     name: 'Onyx',
@@ -68,12 +68,12 @@ export const THEMES = {
   },
   rose: {
     name: 'Crimson',
-    primaryBg: 'bg-rose-900', primaryHover: 'hover:bg-rose-950',
-    textRaw: 'rose', textAccent: 'text-rose-900', bgLight: 'bg-rose-50',
-    borderAccent: 'border-rose-200', ringFocus: 'ring-rose-600',
-    gradientTitle: 'from-rose-900 via-red-800 to-orange-900',
-    particleColor: 'rgba(136, 19, 55, 0.7)',
-    orb1: 'bg-rose-400', orb2: 'bg-red-500', orb3: 'bg-orange-300'
+    primaryBg: 'bg-rose-600', primaryHover: 'hover:bg-rose-700',
+    textRaw: 'rose', textAccent: 'text-rose-600', bgLight: 'bg-rose-50',
+    borderAccent: 'border-rose-200', ringFocus: 'ring-rose-500',
+    gradientTitle: 'from-rose-600 via-red-500 to-orange-500',
+    particleColor: 'rgba(225, 29, 72, 0.6)',
+    orb1: 'bg-rose-400', orb2: 'bg-red-400', orb3: 'bg-orange-200'
   }
 };
 

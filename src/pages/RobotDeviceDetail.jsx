@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Package, Plus, Trash2, Save, Copy, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { Package, Plus, Trash2, Save, Copy, Check, AlertCircle } from 'lucide-react';
 import { doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import ToolLayout from '../components/common/ToolLayout';
+import LoadingSpinner from '../components/common/LoadingSpinner';
+import Modal from '../components/common/Modal';
+import useClipboard from '../hooks/useClipboard';
 import { useTheme } from '../contexts/ThemeContext';
 
 /**
@@ -36,7 +39,7 @@ const RobotDeviceDetail = () => {
 
   const [device, setDevice] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
+  const { copiedKey, copy } = useClipboard();
   const [showAddRecord, setShowAddRecord] = useState(false);
 
   // 设备基础信息的本地编辑状态（不直接修改 device，点保存才写入 Firestore）
@@ -135,11 +138,7 @@ const RobotDeviceDetail = () => {
   };
 
   // 复制 MAC 地址
-  const handleCopy = () => {
-    navigator.clipboard.writeText(decodedMac);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const handleCopy = () => copy(decodedMac, 'mac');
 
   if (loading) {
     return (
@@ -148,9 +147,7 @@ const RobotDeviceDetail = () => {
         icon={<Package size={14} strokeWidth={2.5} />}
         contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[95%] lg:max-w-[90%] xl:max-w-[85%] mx-auto relative z-10"
       >
-        <div className="text-center py-20">
-          <Loader2 size={32} className="animate-spin mx-auto text-slate-400" />
-        </div>
+        <LoadingSpinner />
       </ToolLayout>
     );
   }
@@ -164,19 +161,19 @@ const RobotDeviceDetail = () => {
       contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[95%] lg:max-w-[90%] xl:max-w-[85%] mx-auto relative z-10 space-y-4 sm:space-y-6"
     >
       {/* MAC 地址标题 */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 animate-in fade-in duration-300">
         <span className="font-mono text-base sm:text-lg font-bold text-slate-900">{device.mac}</span>
         <button
           onClick={handleCopy}
           className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
           title="复制 MAC 地址"
         >
-          {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+          {copiedKey === 'mac' ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
         </button>
       </div>
 
       {/* 第一部分：设备基础信息 */}
-      <section className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-slate-200 shadow-md p-4 sm:p-6 space-y-4 sm:space-y-5">
+      <section className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-slate-200 shadow-md p-4 sm:p-6 space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
         <h2 className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-wider">设备基础信息</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -291,7 +288,7 @@ const RobotDeviceDetail = () => {
       </section>
 
       {/* 第二部分：测试记录管理 */}
-      <section className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-slate-200 shadow-md p-4 sm:p-6 space-y-4 sm:space-y-5">
+      <section className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-slate-200 shadow-md p-4 sm:p-6 space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h2 className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-wider">测试记录</h2>
           <button
@@ -313,10 +310,10 @@ const RobotDeviceDetail = () => {
         {/* 记录列表 */}
         {device.testRecords.length > 0 && (
           <div className="space-y-2 sm:space-y-3">
-            {device.testRecords.map(record => {
+            {device.testRecords.map((record, i) => {
               const resultStyle = RESULT_OPTIONS.find(r => r.value === record.result)?.color || 'bg-slate-100 text-slate-700';
               return (
-                <div key={record.id} className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border border-slate-200 hover:shadow-md transition-all duration-200">
+                <div key={record.id} className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border border-slate-200 hover:shadow-md transition-all duration-200 animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'both' }}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0 space-y-1.5 sm:space-y-2">
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -353,13 +350,12 @@ const RobotDeviceDetail = () => {
       </section>
 
       {/* 添加测试记录弹窗 */}
-      {showAddRecord && (
-        <AddTestRecordModal
-          onClose={() => setShowAddRecord(false)}
-          onSave={(record) => { addTestRecord(record); setShowAddRecord(false); }}
-          theme={theme}
-        />
-      )}
+      <AddTestRecordModal
+        isOpen={showAddRecord}
+        onClose={() => setShowAddRecord(false)}
+        onSave={(record) => { addTestRecord(record); setShowAddRecord(false); }}
+        theme={theme}
+      />
     </ToolLayout>
   );
 };
@@ -367,7 +363,7 @@ const RobotDeviceDetail = () => {
 /**
  * AddTestRecordModal: 添加测试记录弹窗
  */
-const AddTestRecordModal = ({ onClose, onSave, theme }) => {
+const AddTestRecordModal = ({ isOpen, onClose, onSave, theme }) => {
   const now = new Date();
   const defaultTime = now.toLocaleString('zh-CN', { hour12: false });
 
@@ -384,9 +380,7 @@ const AddTestRecordModal = ({ onClose, onSave, theme }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="relative bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-md sm:max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-md sm:max-w-lg">
         <div className="p-4 sm:p-6 border-b border-slate-200">
           <h3 className="text-lg sm:text-xl font-bold text-slate-900">添加测试记录</h3>
         </div>
@@ -501,8 +495,7 @@ const AddTestRecordModal = ({ onClose, onSave, theme }) => {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 };
 

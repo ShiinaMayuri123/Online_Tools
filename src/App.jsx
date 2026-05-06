@@ -10,7 +10,7 @@ import BaseConverter from './pages/BaseConverter';
 import IpLookup from './pages/IpLookup';
 import Login from './pages/Login';
 import Admin from './pages/Admin';
-import { Loader2 } from 'lucide-react';
+import LoadingSpinner from './components/common/LoadingSpinner';
 
 /**
  * ProtectedRoute: 需要登录才能访问的路由
@@ -20,7 +20,7 @@ const ProtectedRoute = ({ children }) => {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 size={32} className="animate-spin text-slate-400" />
+        <LoadingSpinner />
       </div>
     );
   }
@@ -35,7 +35,7 @@ const AdminRoute = ({ children }) => {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 size={32} className="animate-spin text-slate-400" />
+        <LoadingSpinner />
       </div>
     );
   }

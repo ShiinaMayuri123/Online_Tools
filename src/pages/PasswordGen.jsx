@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { HardDrive, Check, Copy, RefreshCw } from 'lucide-react';
 import ToolLayout from '../components/common/ToolLayout';
+import useClipboard from '../hooks/useClipboard';
 import { useTheme } from '../contexts/ThemeContext';
 
 // 密码学安全的随机整数生成（范围 [0, max)）
@@ -32,8 +33,8 @@ const PasswordGenTool = () => {
   // 密码包含的字符集选项
   const [options, setOptions] = useState({ upper: true, lower: true, numbers: true, symbols: true });
   const [password, setPassword] = useState(''); // 当前生成的密码
-  const [copied, setCopied] = useState(false); // 是否已复制的提示状态
   const [history, setHistory] = useState([]); // 历史生成的密码列表，最多保存 5 个
+  const { copiedKey, copy } = useClipboard();
 
   // 核心功能：生成密码
   const generate = useCallback(() => {
@@ -65,19 +66,13 @@ const PasswordGenTool = () => {
 
     setPassword(result);
     setHistory(prev => [result, ...prev].slice(0, 5));
-    setCopied(false);
   }, [length, options]);
 
   // 组件挂载时或依赖项（长度、选项）改变时自动生成新密码
   useEffect(() => { generate(); }, [generate]);
 
   // 复制到剪贴板功能
-  const copyToClipboard = () => { 
-      navigator.clipboard.writeText(password); 
-      setCopied(true); 
-      // 2 秒后恢复原状
-      setTimeout(() => setCopied(false), 2000); 
-  };
+  const copyToClipboard = () => copy(password, 'main');
   
   // 根据密码长度和包含的字符种类，计算并返回密码强度的颜色条类名
   const strengthColor = () => { 
@@ -135,7 +130,7 @@ const PasswordGenTool = () => {
         <div className="flex-1 space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500 delay-100">
           
           {/* 密码显示区域 */}
-          <div className={`relative overflow-hidden bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 p-8 flex flex-col items-center justify-center min-h-[300px] text-center transition-all ${copied ? 'ring-2 ring-green-500 border-transparent' : ''}`}>
+          <div className={`relative overflow-hidden bg-white rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 p-8 flex flex-col items-center justify-center min-h-[300px] text-center transition-all ${copiedKey === 'main' ? 'ring-2 ring-green-500 border-transparent' : ''}`}>
             
             {/* 顶部指示条，根据强度变换颜色 */}
             <div className={`absolute top-0 left-0 right-0 h-1.5 ${strengthColor()}`}></div>
@@ -156,8 +151,8 @@ const PasswordGenTool = () => {
                   onClick={copyToClipboard} 
                   className={`flex-[2] py-3 rounded-xl font-bold text-white shadow-lg shadow-slate-200 transition-all flex items-center justify-center gap-2 ${theme.primaryBg} ${theme.primaryHover} active:scale-95`}
                >
-                   {copied ? <Check size={18} /> : <Copy size={18} />}
-                   {copied ? '已复制' : '复制密码'}
+                   {copiedKey === 'main' ? <Check size={18} /> : <Copy size={18} />}
+                   {copiedKey === 'main' ? '已复制' : '复制密码'}
                </button>
             </div>
           </div>
@@ -170,7 +165,7 @@ const PasswordGenTool = () => {
                  {history.map((pw, i) => (
                    <div 
                       key={i} 
-                      onClick={() => { navigator.clipboard.writeText(pw); }} 
+                      onClick={() => copy(pw, `history-${i}`)}
                       className="flex justify-between items-center p-2 rounded-lg hover:bg-white hover:shadow-sm cursor-pointer transition-all group font-mono text-sm text-slate-500"
                    >
                        <span className="truncate mr-4">{pw}</span>

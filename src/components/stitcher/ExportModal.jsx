@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Info } from 'lucide-react';
+import Modal from '../common/Modal';
 import { formatFileSize, stitchImages } from '../../utils/imageUtils';
 
 /**
@@ -53,12 +54,8 @@ const ExportModal = ({ isOpen, onClose, onConfirm, isProcessing, direction, them
     return () => { isMounted = false; clearTimeout(timer); };
   }, [isOpen, format, scale, quality, direction, images]);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-sm">
         <div className="p-6">
           <h3 className="text-xl font-bold text-slate-900 mb-6 flex justify-between items-center">
             <span>导出设置</span>
@@ -139,8 +136,7 @@ const ExportModal = ({ isOpen, onClose, onConfirm, isProcessing, direction, them
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 };
 

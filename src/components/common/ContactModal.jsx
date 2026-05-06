@@ -1,4 +1,5 @@
 import { Send, Mail } from 'lucide-react';
+import Modal from './Modal';
 import { useTheme } from '../../contexts/ThemeContext';
 
 /**
@@ -10,21 +11,10 @@ import { useTheme } from '../../contexts/ThemeContext';
 const ContactModal = ({ isOpen, onClose }) => {
   const { theme } = useTheme();
   const email = "xxp8888888@gmail.com";
-  
-  // 如果当前未打开，则返回 null（不渲染任何内容）
-  if (!isOpen) return null;
-  
+
   return (
-    // 外层容器：绝对定位，覆盖全屏，负责居中内容
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* 遮罩层：半透明黑色背景，加上毛玻璃效果。点击遮罩层可触发 onClose 关闭弹窗 */}
-      <div 
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" 
-        onClick={onClose}
-      ></div>
-      
-      {/* 弹窗本体：带有进入动画的白色卡片 */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200 ring-1 ring-slate-900/5">
+    <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-sm">
+      <div className="ring-1 ring-slate-900/5">
         <div className="p-6 text-center">
            {/* 图标 */}
            <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 ${theme.bgLight} ${theme.textAccent}`}>
@@ -46,15 +36,15 @@ const ContactModal = ({ isOpen, onClose }) => {
         
         {/* 底部按钮区 */}
         <div className="bg-slate-50 px-6 py-3 border-t border-slate-100 flex justify-center">
-            <button 
-                onClick={onClose} 
+            <button
+                onClick={onClose}
                 className="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors"
             >
                 关闭
             </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 

@@ -15,12 +15,17 @@ online_toolbox_vite/
 │   ├── components/           # UI 组件目录
 │   │   ├── common/           # 公共组件
 │   │   │   ├── ContactModal.jsx      # "联系开发者" 弹窗
+│   │   │   ├── FaultPieChart.jsx     # 故障类型饼图
+│   │   │   ├── LoadingSpinner.jsx    # 通用加载指示器
+│   │   │   ├── Modal.jsx            # 通用模态框（遮罩层+入场动画）
 │   │   │   ├── ParticleBackground.jsx # 首页粒子特效背景 (Canvas)
 │   │   │   ├── ThemeSwitcher.jsx     # 主题切换下拉菜单
 │   │   │   ├── ToolCard.jsx          # 首页工具卡片（新标签页打开）
 │   │   │   └── ToolLayout.jsx        # 工具页面公共布局 (导航+内容+页脚)
 │   │   └── stitcher/         # 长图拼接专属组件
 │   │       └── ExportModal.jsx       # 导出参数设置弹窗
+│   ├── hooks/                # 自定义 Hooks
+│   │   └── useClipboard.js   # 剪贴板复制 Hook（统一管理复制状态）
 │   ├── config/               # 配置目录
 │   │   └── theme.jsx         # THEMES 主题配置 + TOOLS 工具列表
 │   ├── contexts/             # React 全局状态
@@ -89,6 +94,11 @@ online_toolbox_vite/
 - **ToolCard**: 首页展示的工具卡片，所有工具在新标签页打开
 - **ThemeSwitcher**: 主题切换下拉菜单
 - **ParticleBackground**: Canvas 粒子动画背景
+- **Modal**: 通用模态框，接受 `isOpen`、`onClose`、`children`、`maxWidth` 属性
+- **LoadingSpinner**: 全页加载指示器
+
+### 6.1 自定义 Hooks (`hooks/`)
+- **useClipboard**: 剪贴板复制 Hook，返回 `{ copiedKey, copy }`，支持多按钮独立状态
 
 ### 7. 工具页面 (`pages/`)
 - **Stitcher**: 长图拼接，支持纵向/横向，可导出 JPEG/PNG/PDF

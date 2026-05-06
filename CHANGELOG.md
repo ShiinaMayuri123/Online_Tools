@@ -1,5 +1,28 @@
 # 变更日志 (CHANGELOG)
 
+## [2026-05-06] 代码质量优化 + UI 增强
+
+### 新增
+- **useClipboard Hook** (`hooks/useClipboard.js`): 统一管理剪贴板复制逻辑和状态
+- **Modal 公共组件** (`components/common/Modal.jsx`): 统一模态框结构（遮罩层+入场动画）
+- **LoadingSpinner 公共组件** (`components/common/LoadingSpinner.jsx`): 统一加载指示器
+
+### 变更
+- `RobotRecord.jsx`: ADB 命令区域从 8 个重复代码块重构为数据驱动渲染（减少约 150 行）
+- `RobotRecord.jsx`: 引入 `useClipboard`、`Modal`、`LoadingSpinner` 替换重复代码
+- `RobotDeviceDetail.jsx`: 引入公共组件，添加页面入场动画和测试记录交错动画
+- `PasswordGen.jsx`: 引入 `useClipboard` 替换手动复制逻辑
+- `BaseConverter.jsx`: 引入 `useClipboard`，增强 UI（毛玻璃、入场动画、悬浮效果）
+- `IpLookup.jsx`: 全面 UI 增强（入场动画、毛玻璃结果区、每行图标+复制按钮、空状态）
+- `Login.jsx`: 添加交错入场动画、输入框图标、按钮按压反馈、错误动画
+- `Admin.jsx`: 添加交错入场动画、info banner 色条、用户卡片悬浮效果、角色切换确认
+- `App.jsx`: 引入 `LoadingSpinner` 替换手动加载指示器
+- `ContactModal.jsx`、`ExportModal.jsx`: 引入 `Modal` 组件替换手动弹窗结构
+- `ThemeContext.jsx`: 移除冗余的 `export` 关键字
+
+### 清理
+- 删除空目录 `src/assets/`
+
 ## [2026-05-06]
 
 ### 新增

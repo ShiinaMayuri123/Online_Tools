@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:skills.sh)",
+      "Bash(npm run *)",
+      "Bash(python3 \"C:\\\\Users\\\\xxp20\\\\.claude\\\\skills\\\\ui-ux-pro-max\\\\scripts\\\\search.py\" \"accordion collapsible code block command list\" --domain ux -n 10)",
+      "Bash(python *)",
+      "Read(//c/Users/xxp20/.claude/src/**)",
+      "Read(//c/Users/xxp20/src/**)"
+    ]
+  }
+}

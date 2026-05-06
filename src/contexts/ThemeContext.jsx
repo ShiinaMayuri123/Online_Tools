@@ -6,7 +6,7 @@ import { THEMES } from '../config/theme';
  * 创建一个 React Context，用于在整个应用中共享主题状态。
  * 主题选择会持久化到 localStorage。
  */
-export const ThemeContext = createContext({
+const ThemeContext = createContext({
     themeKey: 'slate',
     theme: THEMES.slate,
     setThemeKey: () => {}
