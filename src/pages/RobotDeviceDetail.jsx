@@ -146,7 +146,7 @@ const RobotDeviceDetail = () => {
       <ToolLayout
         title="设备详情"
         icon={<Package size={14} strokeWidth={2.5} />}
-        contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[90%] lg:max-w-[85%] xl:max-w-[80%] mx-auto relative z-10"
+        contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[95%] lg:max-w-[90%] xl:max-w-[85%] mx-auto relative z-10"
       >
         <div className="text-center py-20">
           <Loader2 size={32} className="animate-spin mx-auto text-slate-400" />
@@ -161,7 +161,7 @@ const RobotDeviceDetail = () => {
     <ToolLayout
       title="设备详情"
       icon={<Package size={14} strokeWidth={2.5} />}
-      contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[90%] lg:max-w-[85%] xl:max-w-[80%] mx-auto relative z-10 space-y-4 sm:space-y-6"
+      contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[95%] lg:max-w-[90%] xl:max-w-[85%] mx-auto relative z-10 space-y-4 sm:space-y-6"
     >
       {/* MAC 地址标题 */}
       <div className="flex items-center gap-2 sm:gap-3">
@@ -176,8 +176,8 @@ const RobotDeviceDetail = () => {
       </div>
 
       {/* 第一部分：设备基础信息 */}
-      <section className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4 sm:space-y-5">
-        <h2 className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-wider">设备基础信息</h2>
+      <section className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-slate-200 shadow-md p-4 sm:p-6 space-y-4 sm:space-y-5">
+        <h2 className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-wider">设备基础信息</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           {/* 设备型号（必填） */}
@@ -233,7 +233,7 @@ const RobotDeviceDetail = () => {
         {/* 自定义字段 */}
         {editCustomFields.length > 0 && (
           <div className="space-y-3 pt-2">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">自定义字段</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">自定义字段</p>
             {editCustomFields.map((field, i) => (
               <div key={i} className="flex gap-2 sm:gap-3 items-start">
                 <input
@@ -272,7 +272,7 @@ const RobotDeviceDetail = () => {
         </div>
 
         {/* 保存按钮 */}
-        <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+        <div className="flex items-center gap-3 pt-2 border-t border-slate-200">
           <button
             onClick={handleSaveInfo}
             className={`px-6 py-2.5 rounded-xl text-sm font-bold text-white shadow-sm transition-all flex items-center gap-2 ${
@@ -291,9 +291,9 @@ const RobotDeviceDetail = () => {
       </section>
 
       {/* 第二部分：测试记录管理 */}
-      <section className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4 sm:space-y-5">
+      <section className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-slate-200 shadow-md p-4 sm:p-6 space-y-4 sm:space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h2 className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-wider">测试记录</h2>
+          <h2 className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-wider">测试记录</h2>
           <button
             onClick={() => setShowAddRecord(true)}
             className={`px-4 py-2 rounded-xl text-sm font-bold text-white shadow-sm transition-all flex items-center justify-center gap-2 ${theme.primaryBg} ${theme.primaryHover}`}
@@ -316,7 +316,7 @@ const RobotDeviceDetail = () => {
             {device.testRecords.map(record => {
               const resultStyle = RESULT_OPTIONS.find(r => r.value === record.result)?.color || 'bg-slate-100 text-slate-700';
               return (
-                <div key={record.id} className="p-3 sm:p-4 bg-slate-50 rounded-lg sm:rounded-xl border border-slate-100 hover:bg-white transition-colors">
+                <div key={record.id} className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border border-slate-200 hover:shadow-md transition-all duration-200">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0 space-y-1.5 sm:space-y-2">
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -324,7 +324,7 @@ const RobotDeviceDetail = () => {
                         <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${resultStyle}`}>
                           {record.result}
                         </span>
-                        {record.result === '异常' && record.abnormalType && (
+                        {(record.result === '异常' || record.project === '维修') && record.abnormalType && (
                           <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-50 text-red-600 border border-red-200">
                             {record.abnormalType}
                           </span>
@@ -380,7 +380,7 @@ const AddTestRecordModal = ({ onClose, onSave, theme }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({ tester, startTime, endTime, project, result, abnormalType: result === '异常' ? abnormalType : '' });
+    onSave({ tester, startTime, endTime, project, result, abnormalType: (result === '异常' || project === '维修') ? abnormalType : '' });
   };
 
   return (
@@ -458,10 +458,12 @@ const AddTestRecordModal = ({ onClose, onSave, theme }) => {
             </div>
           </div>
 
-          {/* 异常类型（仅当结果为"异常"时显示） */}
-          {result === '异常' && (
+          {/* 故障类型（当结果为"异常"或项目为"维修"时显示） */}
+          {(result === '异常' || project === '维修') && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">异常类型</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                {project === '维修' ? '维修项目' : '异常类型'}
+              </label>
               <div className="flex flex-wrap gap-2">
                 {ABNORMAL_TYPE_OPTIONS.map(type => (
                   <button

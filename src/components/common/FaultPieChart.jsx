@@ -10,7 +10,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recha
 const COLORS = ['#EF4444', '#F97316', '#EAB308', '#22C55E', '#3B82F6', '#8B5CF6', '#EC4899'];
 
 const FaultPieChart = ({ records }) => {
-  // 统计异常类型的分布
+  // 统计异常类型的分布（仅统计结果为"异常"的记录）
   const abnormalRecords = records.filter(r => r.result === '异常' && r.abnormalType);
 
   if (abnormalRecords.length === 0) return null;
@@ -83,8 +83,8 @@ const FaultPieChart = ({ records }) => {
   };
 
   return (
-    <section className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6">
-      <h2 className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
+    <section className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-slate-200 shadow-md p-4 sm:p-6">
+      <h2 className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">
         故障类型分布
       </h2>
 
