@@ -67,25 +67,55 @@ const SplitTunnelTest = ({ theme }) => {
       clearTimeout(tid);
       const duration = Math.round(performance.now() - t0);
       const ip = await parseIp(site, res);
-
-      let location = '查询中';
-      if (ip && ip !== '未知') {
-        try {
-          const lr = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,city,isp&lang=zh-CN`);
-          const ld = await lr.json();
-          location = ld.status === 'success' ? `${ld.country} ${ld.city} (${ld.isp})` : '保留/局域网地址';
-        } catch { location = '接口限流'; }
-      }
-      setResults(prev => ({ ...prev, [site.id]: { status: 'ok', ip, location, duration } }));
+      setResults(prev => ({ ...prev, [site.id]: { status: 'ok', ip, location: null, duration } }));
     } catch {
       setResults(prev => ({ ...prev, [site.id]: { status: 'err', duration: Math.round(performance.now() - t0) } }));
     }
   };
 
+  // 批量串行查询物理地址（去重 IP，防止 ip-api.com 限流）
+  const fetchLocations = async (siteResults) => {
+    const uniqueIps = [...new Set(
+      Object.values(siteResults)
+        .filter(r => r?.status === 'ok' && r.ip && r.ip !== '未知')
+        .map(r => r.ip)
+    )];
+    const locationMap = {};
+    for (const ip of uniqueIps) {
+      try {
+        const r = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,regionName,city,isp&lang=zh-CN`);
+        const d = await r.json();
+        locationMap[ip] = d.status === 'success'
+          ? `${d.country} ${d.regionName} ${d.city}（${d.isp}）`
+          : '保留/局域网地址';
+      } catch { locationMap[ip] = '接口限流'; }
+      await new Promise(res => setTimeout(res, 120));
+    }
+    return locationMap;
+  };
+
   const runAll = useCallback(async () => {
     setLoading(true);
     setResults({});
+    // 第一阶段：并发获取所有站点 IP
     await Promise.all(SITES.map(testSite));
+    // 第二阶段：串行批量查询物理地址
+    setResults(prev => {
+      const snap = { ...prev };
+      fetchLocations(snap).then(locationMap => {
+        setResults(current => {
+          const updated = { ...current };
+          Object.keys(updated).forEach(id => {
+            const r = updated[id];
+            if (r?.status === 'ok' && r.ip && locationMap[r.ip] !== undefined) {
+              updated[id] = { ...r, location: locationMap[r.ip] };
+            }
+          });
+          return updated;
+        });
+      });
+      return snap;
+    });
     setLoading(false);
   }, []);
 
@@ -254,7 +284,9 @@ const SiteRow = ({ site, result }) => {
       <td className="px-5 py-3.5">
         {isLoading ? <div className="h-4 w-40 bg-slate-100 animate-pulse rounded" /> :
           isError ? <span className="text-xs text-slate-300">—</span> :
-          <span className="text-xs font-medium text-slate-600 group-hover:text-slate-800 transition-colors">{result.location}</span>}
+          result.location === null
+            ? <div className="h-4 w-40 bg-slate-100 animate-pulse rounded" />
+            : <span className="text-xs font-medium text-slate-600 group-hover:text-slate-800 transition-colors">{result.location}</span>}
       </td>
       <td className="px-5 py-3.5 text-right">
         {isLoading ? <div className="h-4 w-14 bg-slate-100 animate-pulse rounded ml-auto" /> : (

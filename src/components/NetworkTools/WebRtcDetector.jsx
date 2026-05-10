@@ -41,23 +41,18 @@ const WebRtcDetector = ({ theme }) => {
     } catch { setHttpIp('获取失败'); }
   }, []);
 
+  // ── testStun：只收集 IP，不在内部做地理查询（避免并发限流）──────────────
   const testStun = (server) => {
     return new Promise((resolve) => {
       const pc = new RTCPeerConnection({ iceServers: [{ urls: server.url }] });
       let resolved = false;
 
-      const finish = async (status, ip = null, error = null) => {
+      const finish = (status, ip = null, error = null) => {
         if (resolved) return;
         resolved = true;
         pc.close();
         if (status === 'success' && ip) {
-          try {
-            const r = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,city,isp&lang=zh-CN`);
-            const d = await r.json();
-            resolve({ status: 'success', ip, location: d.status === 'success' ? `${d.country} ${d.city} (${d.isp})` : '未知归属地' });
-          } catch {
-            resolve({ status: 'success', ip, location: '查询归属地失败' });
-          }
+          resolve({ status: 'success', ip, location: null }); // location 稍后批量查
         } else {
           resolve({ status: 'error', error: error || 'STUN 连接失败' });
         }
@@ -87,17 +82,65 @@ const WebRtcDetector = ({ theme }) => {
     });
   };
 
+  // ── 批量地理查询：对唯一 IP 串行查询，间隔 120ms 防限流 ──────────────────
+  const fetchLocations = async (rawResults) => {
+    // 收集所有成功结果中的唯一 IP
+    const uniqueIps = [...new Set(
+      Object.values(rawResults)
+        .filter(r => r.status === 'success' && r.ip)
+        .map(r => r.ip)
+    )];
+
+    const locationMap = {};
+    for (const ip of uniqueIps) {
+      try {
+        const r = await fetch(
+          `http://ip-api.com/json/${ip}?fields=status,country,regionName,city,isp&lang=zh-CN`
+        );
+        const d = await r.json();
+        locationMap[ip] = d.status === 'success'
+          ? `${d.country} ${d.regionName} ${d.city}（${d.isp}）`
+          : '未知归属地';
+      } catch {
+        locationMap[ip] = '查询失败';
+      }
+      // 每次查询间隔 120ms，避免触发 ip-api.com 限流（45次/分钟）
+      await new Promise(res => setTimeout(res, 120));
+    }
+    return locationMap;
+  };
+
   const detectAll = useCallback(async () => {
     setLoading(true);
     setResults({});
     setHostIps([]);
-    await Promise.all([
+
+    // 1. 并发执行所有 STUN 测试 + HTTP IP 获取
+    const [, ...stunResults] = await Promise.all([
       fetchHttpIp(),
-      ...STUN_SERVERS.map(async s => {
-        const r = await testStun(s);
-        setResults(prev => ({ ...prev, [s.url]: r }));
-      }),
+      ...STUN_SERVERS.map(s => testStun(s)),
     ]);
+
+    // 2. 写入初始结果（无地理位置）
+    const rawMap = {};
+    STUN_SERVERS.forEach((s, i) => { rawMap[s.url] = stunResults[i]; });
+    setResults({ ...rawMap });
+
+    // 3. 批量串行查询物理地址
+    const locationMap = await fetchLocations(rawMap);
+
+    // 4. 回写地理位置
+    setResults(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(url => {
+        const r = updated[url];
+        if (r.status === 'success' && r.ip && locationMap[r.ip]) {
+          updated[url] = { ...r, location: locationMap[r.ip] };
+        }
+      });
+      return updated;
+    });
+
     setLoading(false);
   }, [fetchHttpIp]);
 
@@ -288,7 +331,9 @@ const StunRow = ({ server, result, httpIp }) => {
       <td className="px-5 py-3.5">
         {isLoading ? <div className="h-4 w-36 bg-slate-100 animate-pulse rounded" /> :
          isError ? <span className="text-xs text-slate-300">—</span> :
-         <span className="text-xs font-medium text-slate-600">{result.location}</span>}
+         result.location === null
+           ? <div className="h-4 w-36 bg-slate-100 animate-pulse rounded" />
+           : <span className="text-xs font-medium text-slate-600">{result.location}</span>}
       </td>
     </tr>
   );
