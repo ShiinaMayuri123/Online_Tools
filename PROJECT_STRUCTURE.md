@@ -106,7 +106,7 @@ online_toolbox_vite/
 - **RobotRecord**: 机器人设备列表，以 MAC 地址为唯一标识
 - **RobotDeviceDetail**: 设备信息管理 + 测试记录管理，实时同步
 - **BaseConverter**: 二进制/八进制/十进制/十六进制互相转换，支持大数
-- **IpLookup**: IP 一致性查询，多源并发查询 + 多数投票确定真实出口 IP，检测代理/VPN 泄漏，支持地理位置一致性判断
+- **IpLookup**: 网络环境深度探测，采用 Tab 二级导航，包含四大模块：IP 洞察（ipinfo.io + ip-api.com 双源）、IP 欺诈风险评估（评分细则 + 安全建议）、网站分流测试（12 个国内外站点 + 自动分流判定）、WebRTC UDP 泄露检测（STUN 并发 + host candidate 捕获）
 
 ### 8. 工具函数 (`utils/imageUtils.js`)
 - `stitchImages`: 核心图片拼接算法，使用 Canvas 绘制

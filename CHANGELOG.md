@@ -1,5 +1,54 @@
 # 变更日志 (CHANGELOG)
 
+## [2026-05-11] 网络诊断仪表盘深度优化
+
+### 功能升级
+- **`IpRiskDetector.jsx`**：引入双源并发查询（ip-api.com + ipwho.is），交叉验证 7 个信号（TOR/VPN/代理/数据中心/匿名/时区错位/移动网络）
+  - UI 重构为 IPQS 风格三列网格，含 IP 头部横排（国家/城市/省份/VPN/TOR/代理徽章）
+  - 新增渐变评分条（绿→黄→红），评分因子明细徽章块
+  - 新增免责说明与四个权威商业平台跳转（Scamalytics / AbuseIPDB / IPQualityScore / VirusTotal）
+- **`IpInfoCard.jsx`**：新增"多源 IP 一致性校验"横幅（ipify / ip-api / ipwho.is / Cloudflare trace 四源并发），不一致时高亮预警
+- **`SplitTunnelTest.jsx`**：
+  - 站点从 12 扩充至 **20 个**（6 国内 + 14 国际，含 Cloudflare/AWS 原生接口）
+  - 新增 A/B 精度标识体系：🎯 原生（直达公司基础设施）/ 📊 参考（第三方代测）
+  - 延迟颜色从 3 级升级为 **4 级**（< 100ms 绿 / 100-300ms 黄 / 300-600ms 橙 / > 600ms 红）
+  - 新增国内/国际分组行、精度说明卡片、分流小知识扩展
+- **`WebRtcDetector.jsx`**：
+  - STUN 服务器从 8 扩充至 **20 个**（6 国内 + 14 国际）
+  - 新增 **HTTP vs WebRTC IP 对比卡片**：并行查询 HTTP 出口 IP，与 WebRTC srflx IP 逐一比对
+  - 泄露确认逻辑：两者 IP 不同时显示 🚨 确认泄露，对应行标注"泄露"红色徽章
+  - 国内/国际分组、WebRTC 防护教程双栏布局
+
+---
+
+## [2026-05-10] 网络诊断工具 Tab 二级导航重构 + 数据扩充
+
+### 架构重构
+- **`IpLookup.jsx`**: 从四模块堆叠式单页改为 **顶部 Tab 二级导航**，每个功能独占一屏
+  - Tab 状态使用 `useState` 管理，切换时保留已加载数据（不重新请求）
+  - Tab 条使用主题色高亮当前标签
+- **`IpRiskDetector.jsx`**: API 从 `ipwho.is`（CORS 不支持）改为 `ip-api.com`（浏览器友好）
+- **`IpInfoCard.jsx`**: 补充数据源从 `ipwho.is` 改为 `ip-api.com`（`lang=zh-CN` 中文地理信息）
+- **`WebRtcDetector.jsx`**: 修复 ICE candidate IP 提取正则（`[a-f0-9:]+` 改为严格 IPv4 + 完整 IPv6 匹配）
+
+### 数据扩充
+- **IP 洞察**: 新增邮编、国旗 Emoji、国家代码、坐标卡片、浏览器/OS/设备客户端信息（6 项 → 12 项）
+- **风险评估**: 新增评分细则表（4 个因子 + 权重）、时区一致性检查、安全建议区域
+- **分流测试**: 站点从 8 个扩充至 12 个（+Netflix、Amazon、Discord、X/Twitter、Steam），新增分流结论摘要卡片（自动判定分流是否生效）
+- **WebRTC**: 新增 host candidate 本地 IP 捕获、泄露风险总结卡片、WebRTC 原理知识区（含浏览器防护教程）
+
+### 新增
+- 所有四个模块底部均添加 **数据来源标注**（API 名称 + 链接）和 **权威验证网站跳转**（ipinfo.io、scamalytics.com、abuseipdb.com、browserleaks.com、ipleak.net 等）
+- 分流小知识区域扩展为 4 条 FAQ
+
+### 代码清理
+- 删除 `WebRtcDetector.jsx` 中未使用的 `ipFound` 变量
+- 删除 `WebRtcDetector.jsx` 中已废弃的 `extractIPv4` 函数
+- 更新 `PROJECT_STRUCTURE.md` 中 IpLookup 的描述
+
+---
+
+
 ## [2026-05-07] IP 一致性查询工具升级 + 布局优化 + Bug 修复
 
 ### 新增
