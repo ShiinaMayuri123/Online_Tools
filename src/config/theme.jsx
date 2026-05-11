@@ -4,76 +4,77 @@ import { AlignVerticalSpaceAround, HardDrive, Package, Hash, Globe, Sparkles } f
  * THEMES (主题配置)
  * 定义了整个工具箱支持的所有颜色主题。
  * 每个属性名代表一个主题的唯一标识，包含 Tailwind CSS 类名。
+ * 配色原则：低饱和度、柔和舒适，适合长时间使用。
  */
 export const THEMES = {
   slate: {
     name: 'Minimal',
-    primaryBg: 'bg-slate-700',
-    primaryHover: 'hover:bg-slate-800',
+    primaryBg: 'bg-slate-600',
+    primaryHover: 'hover:bg-slate-700',
     textRaw: 'slate',
-    textAccent: 'text-slate-700',
-    bgLight: 'bg-slate-100',
-    borderAccent: 'border-slate-300',
-    ringFocus: 'ring-slate-500',
-    gradientTitle: 'from-slate-700 via-gray-600 to-zinc-500',
-    particleColor: 'rgba(71, 85, 105, 0.6)',
-    orb1: 'bg-slate-400',
-    orb2: 'bg-gray-400',
-    orb3: 'bg-zinc-200'
+    textAccent: 'text-slate-600',
+    bgLight: 'bg-slate-50',
+    borderAccent: 'border-slate-200',
+    ringFocus: 'ring-slate-400',
+    gradientTitle: 'from-slate-600 via-gray-500 to-zinc-400',
+    particleColor: 'rgba(71, 85, 105, 0.3)',
+    orb1: 'bg-slate-300',
+    orb2: 'bg-gray-300',
+    orb3: 'bg-zinc-100'
   },
   blue: {
     name: 'Ocean',
-    primaryBg: 'bg-indigo-600', primaryHover: 'hover:bg-indigo-700',
-    textRaw: 'indigo', textAccent: 'text-indigo-600', bgLight: 'bg-indigo-50',
-    borderAccent: 'border-indigo-200', ringFocus: 'ring-indigo-500',
-    gradientTitle: 'from-indigo-600 via-blue-500 to-sky-500',
-    particleColor: 'rgba(79, 70, 229, 0.6)',
-    orb1: 'bg-indigo-400', orb2: 'bg-blue-400', orb3: 'bg-sky-200'
+    primaryBg: 'bg-indigo-500', primaryHover: 'hover:bg-indigo-600',
+    textRaw: 'indigo', textAccent: 'text-indigo-500', bgLight: 'bg-indigo-50/60',
+    borderAccent: 'border-indigo-100', ringFocus: 'ring-indigo-400',
+    gradientTitle: 'from-indigo-500 via-blue-400 to-sky-400',
+    particleColor: 'rgba(99, 102, 241, 0.3)',
+    orb1: 'bg-indigo-200', orb2: 'bg-blue-200', orb3: 'bg-sky-100'
   },
   emerald: {
     name: 'Aurora',
-    primaryBg: 'bg-emerald-600', primaryHover: 'hover:bg-emerald-700',
-    textRaw: 'emerald', textAccent: 'text-emerald-600', bgLight: 'bg-emerald-50',
-    borderAccent: 'border-emerald-200', ringFocus: 'ring-emerald-500',
-    gradientTitle: 'from-emerald-600 via-teal-500 to-cyan-400',
-    particleColor: 'rgba(16, 185, 129, 0.6)',
-    orb1: 'bg-emerald-400', orb2: 'bg-teal-400', orb3: 'bg-cyan-200'
+    primaryBg: 'bg-emerald-500', primaryHover: 'hover:bg-emerald-600',
+    textRaw: 'emerald', textAccent: 'text-emerald-500', bgLight: 'bg-emerald-50/60',
+    borderAccent: 'border-emerald-100', ringFocus: 'ring-emerald-400',
+    gradientTitle: 'from-emerald-500 via-teal-400 to-cyan-300',
+    particleColor: 'rgba(16, 185, 129, 0.3)',
+    orb1: 'bg-emerald-200', orb2: 'bg-teal-200', orb3: 'bg-cyan-100'
   },
   violet: {
     name: 'Neon',
-    primaryBg: 'bg-purple-600', primaryHover: 'hover:bg-purple-700',
-    textRaw: 'purple', textAccent: 'text-purple-600', bgLight: 'bg-purple-50',
-    borderAccent: 'border-purple-200', ringFocus: 'ring-purple-500',
-    gradientTitle: 'from-purple-600 via-violet-500 to-fuchsia-500',
-    particleColor: 'rgba(147, 51, 234, 0.6)',
-    orb1: 'bg-purple-400', orb2: 'bg-violet-400', orb3: 'bg-fuchsia-200'
+    primaryBg: 'bg-purple-500', primaryHover: 'hover:bg-purple-600',
+    textRaw: 'purple', textAccent: 'text-purple-500', bgLight: 'bg-purple-50/60',
+    borderAccent: 'border-purple-100', ringFocus: 'ring-purple-400',
+    gradientTitle: 'from-purple-500 via-violet-400 to-indigo-300',
+    particleColor: 'rgba(147, 51, 234, 0.25)',
+    orb1: 'bg-purple-200', orb2: 'bg-violet-200', orb3: 'bg-indigo-100'
   },
-  amber: {
-    name: 'Sunset',
-    primaryBg: 'bg-orange-600', primaryHover: 'hover:bg-orange-700',
-    textRaw: 'orange', textAccent: 'text-orange-600', bgLight: 'bg-orange-50',
-    borderAccent: 'border-orange-200', ringFocus: 'ring-orange-500',
-    gradientTitle: 'from-orange-500 via-rose-500 to-pink-500',
-    particleColor: 'rgba(234, 88, 12, 0.6)',
-    orb1: 'bg-orange-400', orb2: 'bg-rose-400', orb3: 'bg-pink-200'
+  cyan: {
+    name: 'Steel',
+    primaryBg: 'bg-slate-500', primaryHover: 'hover:bg-slate-600',
+    textRaw: 'slate', textAccent: 'text-slate-500', bgLight: 'bg-slate-50/60',
+    borderAccent: 'border-slate-200', ringFocus: 'ring-slate-400',
+    gradientTitle: 'from-slate-500 via-blue-300 to-cyan-300',
+    particleColor: 'rgba(100, 116, 139, 0.25)',
+    orb1: 'bg-slate-200', orb2: 'bg-blue-200', orb3: 'bg-cyan-50'
   },
   zinc: {
     name: 'Onyx',
-    primaryBg: 'bg-zinc-900', primaryHover: 'hover:bg-black',
-    textRaw: 'zinc', textAccent: 'text-zinc-900', bgLight: 'bg-zinc-100',
-    borderAccent: 'border-zinc-300', ringFocus: 'ring-zinc-600',
-    gradientTitle: 'from-zinc-900 via-neutral-700 to-stone-600',
-    particleColor: 'rgba(24, 24, 27, 0.8)',
-    orb1: 'bg-gray-500', orb2: 'bg-zinc-600', orb3: 'bg-stone-400'
+    primaryBg: 'bg-zinc-700', primaryHover: 'hover:bg-zinc-800',
+    textRaw: 'zinc', textAccent: 'text-zinc-700', bgLight: 'bg-zinc-50',
+    borderAccent: 'border-zinc-200', ringFocus: 'ring-zinc-500',
+    gradientTitle: 'from-zinc-700 via-neutral-600 to-stone-500',
+    particleColor: 'rgba(24, 24, 27, 0.35)',
+    orb1: 'bg-gray-300', orb2: 'bg-zinc-300', orb3: 'bg-stone-200'
   },
-  rose: {
-    name: 'Crimson',
-    primaryBg: 'bg-rose-600', primaryHover: 'hover:bg-rose-700',
-    textRaw: 'rose', textAccent: 'text-rose-600', bgLight: 'bg-rose-50',
-    borderAccent: 'border-rose-200', ringFocus: 'ring-rose-500',
-    gradientTitle: 'from-rose-600 via-red-500 to-orange-500',
-    particleColor: 'rgba(225, 29, 72, 0.6)',
-    orb1: 'bg-rose-400', orb2: 'bg-red-400', orb3: 'bg-orange-200'
+  sky: {
+    name: 'Frost',
+    primaryBg: 'bg-sky-500', primaryHover: 'hover:bg-sky-600',
+    textRaw: 'sky', textAccent: 'text-sky-500', bgLight: 'bg-sky-50/60',
+    borderAccent: 'border-sky-100', ringFocus: 'ring-sky-400',
+    gradientTitle: 'from-sky-500 via-blue-400 to-slate-300',
+    particleColor: 'rgba(14, 165, 233, 0.25)',
+    orb1: 'bg-sky-200', orb2: 'bg-blue-200', orb3: 'bg-slate-100'
   }
 };
 

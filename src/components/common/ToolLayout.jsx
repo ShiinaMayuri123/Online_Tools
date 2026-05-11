@@ -1,8 +1,10 @@
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Wrench, LogOut, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import ThemeSwitcher from './ThemeSwitcher';
+import ParticleBackground from './ParticleBackground';
 
 /**
  * ToolLayout: 所有工具页面的公共布局组件
@@ -16,9 +18,29 @@ import ThemeSwitcher from './ThemeSwitcher';
 const ToolLayout = ({ title, icon, children, navActions, contentClassName }) => {
   const { theme, themeKey } = useTheme();
   const { user, role, logout } = useAuth();
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePos({
+        x: (e.clientX / window.innerWidth - 0.5) * 30,
+        y: (e.clientY / window.innerHeight - 0.5) * 30
+      });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col relative overflow-x-hidden">
+      {/* 背景层：渐变光球 + 粒子特效 */}
+      <div className="fixed inset-0 z-0 overflow-hidden bg-white">
+        <div className={`absolute top-[-10%] left-[-10%] w-[600px] h-[600px] rounded-full mix-blend-multiply filter blur-[90px] opacity-60 animate-blob transition-colors duration-1000 ${theme.orb1}`} style={{ transform: `translate(${mousePos.x * -1}px, ${mousePos.y * -1}px)` }}></div>
+        <div className={`absolute top-[10%] right-[-10%] w-[500px] h-[500px] rounded-full mix-blend-multiply filter blur-[90px] opacity-60 animate-blob animation-delay-2000 transition-colors duration-1000 ${theme.orb2}`} style={{ transform: `translate(${mousePos.x}px, ${mousePos.y * -1}px)` }}></div>
+        <div className={`absolute -bottom-32 left-[20%] w-[700px] h-[700px] rounded-full mix-blend-multiply filter blur-[100px] opacity-70 animate-blob animation-delay-4000 transition-colors duration-1000 ${theme.orb3}`} style={{ transform: `translate(${mousePos.x * -0.5}px, ${mousePos.y}px)` }}></div>
+        <ParticleBackground />
+      </div>
+
       {/* 顶部导航栏 */}
       <nav className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-12 bg-white/60 backdrop-blur-md border-b border-slate-200/60">
         {/* 左侧：返回按钮 + 工具标题 */}
@@ -71,13 +93,6 @@ const ToolLayout = ({ title, icon, children, navActions, contentClassName }) => 
       <main className={contentClassName || "pt-24 pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[95%] lg:max-w-[90%] xl:max-w-7xl mx-auto relative z-10 flex-grow"}>
         {children}
       </main>
-
-      {/* 页脚 */}
-      <footer className="border-t border-slate-200/50 bg-white/40 backdrop-blur-xl relative z-0">
-        <div className="max-w-7xl mx-auto px-6 py-6 text-center">
-          <p className="text-slate-400 text-xs font-medium">Made With ❤️</p>
-        </div>
-      </footer>
     </div>
   );
 };

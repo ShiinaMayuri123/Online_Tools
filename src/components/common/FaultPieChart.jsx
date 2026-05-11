@@ -9,6 +9,37 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recha
 // 饼图颜色方案
 const COLORS = ['#EF4444', '#F97316', '#EAB308', '#22C55E', '#3B82F6', '#8B5CF6', '#EC4899'];
 
+// 自定义 Tooltip
+const CustomTooltip = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    const { name, value, percentage } = payload[0].payload;
+    return (
+      <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border border-slate-200 px-3 py-2">
+        <p className="text-sm font-bold text-slate-900">{name}</p>
+        <p className="text-xs text-slate-500">
+          {value} 次 ({percentage}%)
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
+// 自定义 Legend
+const CustomLegend = ({ payload }) => (
+  <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-4">
+    {payload.map((entry, index) => (
+      <div key={index} className="flex items-center gap-1.5">
+        <div
+          className="w-3 h-3 rounded-full"
+          style={{ backgroundColor: entry.color }}
+        />
+        <span className="text-xs text-slate-600">{entry.value}</span>
+      </div>
+    ))}
+  </div>
+);
+
 const FaultPieChart = ({ records }) => {
   // 统计异常类型的分布（仅统计结果为"异常"的记录）
   const abnormalRecords = records.filter(r => r.result === '异常' && r.abnormalType);
@@ -27,37 +58,6 @@ const FaultPieChart = ({ records }) => {
     value,
     percentage: ((value / abnormalRecords.length) * 100).toFixed(1),
   }));
-
-  // 自定义 Tooltip
-  const CustomTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      const { name, value, percentage } = payload[0].payload;
-      return (
-        <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border border-slate-200 px-3 py-2">
-          <p className="text-sm font-bold text-slate-900">{name}</p>
-          <p className="text-xs text-slate-500">
-            {value} 次 ({percentage}%)
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // 自定义 Legend
-  const CustomLegend = ({ payload }) => (
-    <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-4">
-      {payload.map((entry, index) => (
-        <div key={index} className="flex items-center gap-1.5">
-          <div
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: entry.color }}
-          />
-          <span className="text-xs text-slate-600">{entry.value}</span>
-        </div>
-      ))}
-    </div>
-  );
 
   // 自定义标签（显示百分比）
   const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percentage }) => {

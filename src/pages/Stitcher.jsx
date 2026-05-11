@@ -90,7 +90,7 @@ const StitcherTool = () => {
   const [isProcessing, setIsProcessing] = useState(false); // 是否正在处理（拼接/下载）
 
   // 当清空图片时，重置缩放比例
-  useEffect(() => { if (images.length === 0) setZoom(1); }, [images.length]);
+  useEffect(() => { if (images.length === 0) setZoom(1); }, [images.length]); // eslint-disable-line react-hooks/set-state-in-effect
 
   // 处理图片上传（同时支持拖拽和点击上传）
   const handleFileUpload = async (files) => { 

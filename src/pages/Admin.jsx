@@ -4,7 +4,6 @@ import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import ToolLayout from '../components/common/ToolLayout';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 
 /**
@@ -14,7 +13,6 @@ import { useAuth } from '../contexts/AuthContext';
  */
 
 const Admin = () => {
-  const { theme } = useTheme();
   const { user } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +28,7 @@ const Admin = () => {
   }, []);
 
   // 修改角色（带确认）
-  const handleRoleChange = async (uid, newRole, currentRole) => {
+  const handleRoleChange = async (uid, newRole) => {
     if (uid === user?.uid) {
       alert('不能修改自己的角色');
       return;

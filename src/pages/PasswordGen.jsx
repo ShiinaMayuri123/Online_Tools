@@ -21,6 +21,18 @@ const shuffle = (arr) => {
   return arr;
 };
 
+// 开关拨动按钮
+const Toggle = ({ label, checked, onChange, primaryBg }) => (
+  <div onClick={() => onChange(!checked)} className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition-all group select-none">
+    <span className="font-bold text-slate-700">{label}</span>
+    {/* 轨道 */}
+    <div className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 flex items-center ${checked ? primaryBg : 'bg-slate-200'}`}>
+      {/* 滑块 */}
+      <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-300 ${checked ? 'translate-x-6' : 'translate-x-0'}`}></div>
+    </div>
+  </div>
+);
+
 /**
  * PasswordGenTool: 密码生成器页面
  * 提供本地离线生成强密码的功能，保证安全。
@@ -69,31 +81,19 @@ const PasswordGenTool = () => {
   }, [length, options]);
 
   // 组件挂载时或依赖项（长度、选项）改变时自动生成新密码
-  useEffect(() => { generate(); }, [generate]);
+  useEffect(() => { (async () => { generate(); })(); }, [generate]);
 
   // 复制到剪贴板功能
   const copyToClipboard = () => copy(password, 'main');
-  
+
   // 根据密码长度和包含的字符种类，计算并返回密码强度的颜色条类名
-  const strengthColor = () => { 
-      if (length < 8) return 'bg-red-500'; 
-      if (length < 12) return 'bg-orange-500'; 
-      const typesCount = Object.values(options).filter(Boolean).length; 
-      if (typesCount < 3) return 'bg-yellow-500'; 
-      return 'bg-green-500'; 
+  const strengthColor = () => {
+      if (length < 8) return 'bg-red-500';
+      if (length < 12) return 'bg-orange-500';
+      const typesCount = Object.values(options).filter(Boolean).length;
+      if (typesCount < 3) return 'bg-yellow-500';
+      return 'bg-green-500';
   };
-  
-  // 内部小组件：开关拨动按钮
-  const Toggle = ({ label, checked, onChange }) => (
-    <div onClick={() => onChange(!checked)} className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 transition-all group select-none">
-      <span className="font-bold text-slate-700">{label}</span>
-      {/* 轨道 */}
-      <div className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 flex items-center ${checked ? theme.primaryBg : 'bg-slate-200'}`}>
-        {/* 滑块 */}
-        <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-300 ${checked ? 'translate-x-6' : 'translate-x-0'}`}></div>
-      </div>
-    </div>
-  );
 
   return (
     <ToolLayout title="安全密码生成器" icon={<HardDrive size={14} strokeWidth={2.5} />}>
@@ -119,10 +119,10 @@ const PasswordGenTool = () => {
           
           {/* 字符集选项开关 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Toggle label="ABC 大写字母" checked={options.upper} onChange={v => setOptions({ ...options, upper: v })} />
-            <Toggle label="abc 小写字母" checked={options.lower} onChange={v => setOptions({ ...options, lower: v })} />
-            <Toggle label="123 数字" checked={options.numbers} onChange={v => setOptions({ ...options, numbers: v })} />
-            <Toggle label="#$& 特殊符号" checked={options.symbols} onChange={v => setOptions({ ...options, symbols: v })} />
+            <Toggle label="ABC 大写字母" checked={options.upper} onChange={v => setOptions({ ...options, upper: v })} primaryBg={theme.primaryBg} />
+            <Toggle label="abc 小写字母" checked={options.lower} onChange={v => setOptions({ ...options, lower: v })} primaryBg={theme.primaryBg} />
+            <Toggle label="123 数字" checked={options.numbers} onChange={v => setOptions({ ...options, numbers: v })} primaryBg={theme.primaryBg} />
+            <Toggle label="#$& 特殊符号" checked={options.symbols} onChange={v => setOptions({ ...options, symbols: v })} primaryBg={theme.primaryBg} />
           </div>
         </div>
         
