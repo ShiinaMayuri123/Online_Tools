@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Package, Upload, Copy, HardDrive, Trash2, Search, Terminal,
-  ChevronDown, ChevronUp, Check, X, ClipboardList, AlertTriangle,
-  Calendar, Wifi, Info, Settings, Folder, FileText, Monitor,
-  MousePointer, SearchX, ArrowUpDown,
+  Package, Upload, Copy, HardDrive, Trash2, Search,
+  Check, X, ClipboardList, AlertTriangle,
+  Calendar, SearchX, ArrowUpDown,
 } from 'lucide-react';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -14,95 +13,7 @@ import Modal from '../components/common/Modal';
 import FaultPieChart from '../components/common/FaultPieChart';
 import useClipboard from '../hooks/useClipboard';
 import { useTheme } from '../contexts/ThemeContext';
-
-// ADB 命令分类数据（含图标）
-const ADB_SECTIONS = [
-  {
-    title: '连接与设备管理',
-    icon: Wifi,
-    commands: [
-      { cmd: 'adb connect <ip地址>', desc: '通过 WiFi 连接设备' },
-      { cmd: 'adb disconnect', desc: '断开所有无线连接' },
-      { cmd: 'adb devices', desc: '列出已连接的设备' },
-      { cmd: 'adb devices -l', desc: '列出设备详细信息' },
-    ],
-  },
-  {
-    title: '设备信息查询',
-    icon: Info,
-    commands: [
-      { cmd: 'adb shell getprop ro.product.model', desc: '获取设备型号' },
-      { cmd: 'adb shell getprop ro.build.version.release', desc: '获取 Android 版本' },
-      { cmd: 'adb shell cat /sys/class/net/wlan0/address', desc: '获取 WiFi MAC 地址' },
-      { cmd: 'adb shell ifconfig wlan0', desc: '获取 WiFi 详细信息' },
-      { cmd: 'adb shell df -h', desc: '查看磁盘使用情况' },
-      { cmd: 'adb shell cat /proc/meminfo', desc: '查看内存信息' },
-    ],
-  },
-  {
-    title: '系统操作',
-    icon: Settings,
-    commands: [
-      { cmd: 'adb reboot', desc: '重启设备' },
-      { cmd: 'adb reboot recovery', desc: '重启进入 Recovery' },
-      { cmd: 'adb shell date', desc: '查看设备时间' },
-      { cmd: 'adb shell settings get system screen_brightness', desc: '获取屏幕亮度' },
-    ],
-  },
-  {
-    title: '应用管理',
-    icon: Package,
-    commands: [
-      { cmd: 'adb shell pm list packages', desc: '列出所有应用' },
-      { cmd: 'adb shell pm list packages | grep pudu', desc: '搜索普渡应用' },
-      { cmd: 'adb install -r <apk路径>', desc: '覆盖安装应用' },
-      { cmd: 'adb shell am force-stop <包名>', desc: '强制停止应用' },
-      { cmd: 'adb shell pm clear <包名>', desc: '清除应用数据' },
-    ],
-  },
-  {
-    title: '文件操作',
-    icon: Folder,
-    commands: [
-      { cmd: 'adb push <本地路径> <设备路径>', desc: '推送文件到设备' },
-      { cmd: 'adb pull <设备路径> <本地路径>', desc: '从设备拉取文件' },
-      { cmd: 'adb shell rm -r /sdcard/pudu/log/*', desc: '清理普渡日志' },
-      { cmd: 'adb shell du -sh *', desc: '查看目录大小' },
-    ],
-  },
-  {
-    title: '日志与调试',
-    icon: FileText,
-    commands: [
-      { cmd: 'adb logcat', desc: '查看实时日志' },
-      { cmd: 'adb logcat -c', desc: '清除日志缓冲区' },
-      { cmd: 'adb logcat *:E', desc: '只显示错误日志' },
-      { cmd: 'adb logcat | grep -i "pudu\\|robot\\|error"', desc: '过滤普渡相关日志' },
-      { cmd: 'adb shell dumpsys battery', desc: '查看电池状态' },
-      { cmd: 'adb shell dumpsys wifi', desc: '查看 WiFi 状态' },
-    ],
-  },
-  {
-    title: '屏幕与显示',
-    icon: Monitor,
-    commands: [
-      { cmd: 'adb shell screencap /sdcard/screenshot.png', desc: '截图' },
-      { cmd: 'adb pull /sdcard/screenshot.png', desc: '拉取截图' },
-      { cmd: 'adb shell screenrecord /sdcard/video.mp4', desc: '录屏' },
-      { cmd: 'adb shell wm size', desc: '查看屏幕分辨率' },
-    ],
-  },
-  {
-    title: '输入模拟',
-    icon: MousePointer,
-    commands: [
-      { cmd: 'adb shell input keyevent 3', desc: 'HOME 键' },
-      { cmd: 'adb shell input keyevent 4', desc: '返回键' },
-      { cmd: 'adb shell input tap 500 500', desc: '点击坐标' },
-      { cmd: 'adb shell input swipe 500 1000 500 500', desc: '滑动操作' },
-    ],
-  },
-];
+import AdbReferencePanel from '../components/robot/AdbReferencePanel';
 
 /**
  * MAC 地址输入框组件
@@ -149,10 +60,7 @@ const RobotRecord = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
   const [importMac, setImportMac] = useState('');
-  const [showAdbRef, setShowAdbRef] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [adbSearch, setAdbSearch] = useState('');
-  const [activeSection, setActiveSection] = useState('all');
   const [sortBy, setSortBy] = useState('time');
   const { copiedKey, copy } = useClipboard();
 
@@ -239,28 +147,11 @@ const RobotRecord = () => {
   // 复制 MAC 地址
   const handleCopy = (mac) => copy(mac, `mac-${mac}`);
 
-  // ADB 命令过滤
-  const filteredAdbSections = useMemo(() => {
-    const term = adbSearch.toLowerCase();
-    if (!term && activeSection === 'all') return ADB_SECTIONS;
-    return ADB_SECTIONS
-      .filter((_, i) => activeSection === 'all' || i === Number(activeSection))
-      .map(section => ({
-        ...section,
-        commands: section.commands.filter(c =>
-          !term || c.cmd.toLowerCase().includes(term) || c.desc.toLowerCase().includes(term)
-        ),
-      }))
-      .filter(section => section.commands.length > 0);
-  }, [adbSearch, activeSection]);
-
-  const totalAdbCommands = ADB_SECTIONS.reduce((sum, s) => sum + s.commands.length, 0);
-
   return (
     <ToolLayout
       title="机器人测试记录管理"
       icon={<Package size={14} strokeWidth={2.5} />}
-      contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-10 xl:px-16 w-full max-w-[95%] lg:max-w-[90%] xl:max-w-7xl mx-auto relative z-10 space-y-4 sm:space-y-6"
+      contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-2 sm:px-3 lg:px-5 xl:px-8 w-full max-w-[60%] mx-auto relative z-10 space-y-4 sm:space-y-6"
     >
       {/* 统计概览栏 */}
       {!loading && devices.length > 0 && (
@@ -448,136 +339,7 @@ const RobotRecord = () => {
       )}
 
       {/* ADB 命令参考 */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-slate-200 shadow-md overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <button
-          onClick={() => setShowAdbRef(!showAdbRef)}
-          className="w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
-        >
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 rounded-lg bg-slate-100 text-slate-600">
-              <Terminal size={16} />
-            </div>
-            <span className="text-sm sm:text-base font-bold text-slate-800">ADB 命令参考</span>
-            <span className="text-xs text-slate-400 font-mono">{totalAdbCommands} 条命令</span>
-          </div>
-          <ChevronDown
-            size={18}
-            className={`text-slate-400 transition-transform duration-200 ${showAdbRef ? 'rotate-180' : ''}`}
-          />
-        </button>
-
-        {showAdbRef && (
-          <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-4 animate-in fade-in duration-200">
-            {/* 搜索 + 分类标签 */}
-            <div className="space-y-3">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="搜索命令或描述..."
-                  value={adbSearch}
-                  onChange={(e) => setAdbSearch(e.target.value)}
-                  className="w-full px-4 py-2 pl-10 pr-10 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-200"
-                />
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                {adbSearch && (
-                  <button
-                    onClick={() => setAdbSearch('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                    <X size={15} />
-                  </button>
-                )}
-              </div>
-
-              {/* 分类标签 */}
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                <button
-                  onClick={() => setActiveSection('all')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
-                    activeSection === 'all'
-                      ? `${theme.primaryBg} text-white shadow-md`
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  全部
-                </button>
-                {ADB_SECTIONS.map((section, i) => {
-                  const Icon = section.icon;
-                  return (
-                    <button
-                      key={section.title}
-                      onClick={() => setActiveSection(String(i))}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                        activeSection === String(i)
-                          ? `${theme.primaryBg} text-white shadow-md`
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      <Icon size={12} />
-                      {section.title}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 命令列表 */}
-            <div className="max-h-[50vh] overflow-y-auto space-y-4 sm:space-y-5">
-              {filteredAdbSections.length > 0 ? (
-                filteredAdbSections.map(section => {
-                  const Icon = section.icon;
-                  return (
-                    <div key={section.title}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Icon size={14} className="text-slate-400" />
-                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">{section.title}</h3>
-                        <span className="text-xs text-slate-300">{section.commands.length}</span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {section.commands.map(({ cmd, desc }) => (
-                          <div
-                            key={cmd}
-                            className="bg-slate-50 hover:bg-slate-100 rounded-lg p-3 transition-colors group"
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <code className="text-xs font-mono text-slate-700 break-all leading-relaxed">{cmd}</code>
-                                <p className="text-xs text-slate-400 mt-1">{desc}</p>
-                              </div>
-                              <button
-                                onClick={() => copy(cmd, `cmd-${cmd}`)}
-                                className={`p-1.5 rounded-md transition-all shrink-0 ${
-                                  copiedKey === `cmd-${cmd}`
-                                    ? 'text-green-500 bg-green-50'
-                                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200'
-                                }`}
-                                title="复制命令"
-                              >
-                                {copiedKey === `cmd-${cmd}` ? <Check size={13} /> : <Copy size={13} />}
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-center py-8 text-slate-400">
-                  <SearchX size={28} className="mx-auto mb-2" />
-                  <p className="text-sm">未找到匹配的命令</p>
-                  <button
-                    onClick={() => { setAdbSearch(''); setActiveSection('all'); }}
-                    className="text-xs text-slate-500 underline mt-1"
-                  >
-                    清除搜索
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      <AdbReferencePanel />
 
       {/* 导入设备弹窗 */}
       <Modal isOpen={showImportModal} onClose={() => { setShowImportModal(false); setImportMac(''); }}>

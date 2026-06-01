@@ -29,5 +29,8 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Claude Code local settings
+.claude/
+
 # External projects
 everything-claude-code/
