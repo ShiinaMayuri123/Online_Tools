@@ -7,10 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server": "node server/index.js"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.4",
+    "express": "^5.2.1",
     "firebase": "^12.12.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.8.0",
@@ -18,7 +20,8 @@
     "react-dom": "^19.2.5",
     "react-router-dom": "^7.14.2",
     "recharts": "^3.8.1",
-    "tailwindcss": "^4.2.4"
+    "tailwindcss": "^4.2.4",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
