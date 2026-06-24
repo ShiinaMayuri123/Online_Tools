@@ -3,19 +3,50 @@ import {
   Wifi, WifiOff, Monitor, Package, FileText, Folder, Network,
   HardDrive, Settings, Stethoscope, ChevronDown, ChevronRight,
   Play, Square, Trash2, Download, Terminal, X, Search, Copy, Check,
-  AlertTriangle, Shield, RefreshCw, Cpu, Battery,
+  AlertTriangle, Shield, RefreshCw, Cpu, Battery, Link, Unlink,
+  CheckCircle,
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
-import useClipboard from '../../hooks/useClipboard';
 import { ADB_SECTIONS, TROUBLESHOOTING_FLOWS, LOG_FILTER_KEYWORDS } from '../../config/adbData';
+import LocalAgentGuide from './LocalAgentGuide';
 
-const API_BASE = '/api';
-const WS_URL = 'ws://localhost:3001';
+// ============ 本地代理配置 ============
 
-// API 密钥配置 - 首次运行服务器时获取
+// 候选端口列表（避免使用 5037，那是 adb server 默认端口）
+const AGENT_PORTS = [5038, 5039, 5040, 12553, 12554];
+
+/**
+ * 检测本地代理是否运行
+ * @returns {Promise<string|null>} 代理地址，未检测到返回 null
+ */
+async function detectLocalAgent() {
+  for (const port of AGENT_PORTS) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/health`, {
+        method: 'GET',
+        cache: 'no-store',
+        mode: 'cors',
+        signal: AbortSignal.timeout(1000) // 1 秒超时
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok) {
+          return `http://127.0.0.1:${port}`;
+        }
+      }
+    } catch {
+      // 继续尝试下一个端口
+    }
+  }
+  return null;
+}
+
+/**
+ * 获取 API Token
+ * @returns {string}
+ */
 const getApiKey = () => {
-  // 从 localStorage 获取，或使用默认值
-  return localStorage.getItem('adb_api_key') || '';
+  return localStorage.getItem('adb_local_agent_token') || '';
 };
 
 /** 功能模块配置 */
@@ -32,36 +63,46 @@ const MODULES = [
 
 const AdbConsole = () => {
   const { theme } = useTheme();
-  const { copiedKey, copy } = useClipboard();
   const outputRef = useRef(null);
   const wsRef = useRef(null);
 
+  // 本地代理状态
+  const [agentBaseUrl, setAgentBaseUrl] = useState(null); // 检测到的代理地址
+  const [agentDetecting, setAgentDetecting] = useState(true); // 检测中
+  const [agentToken, setAgentToken] = useState(getApiKey()); // Token
+
   // 连接状态
   const [connectionInput, setConnectionInput] = useState('192.168.51.143');
-  const [apiKeyInput, setApiKeyInput] = useState(getApiKey());
   const [connectedDevice, setConnectedDevice] = useState(null);
   const [connecting, setConnecting] = useState(false);
   const [devices, setDevices] = useState([]);
   const [showConsole, setShowConsole] = useState(true);
-  const [showApiKey, setShowApiKey] = useState(false);
+  const [showToken, setShowToken] = useState(false);
 
   // 命令执行状态
   const [activeModule, setActiveModule] = useState('device-info');
   const [customCommand, setCustomCommand] = useState('adb shell ');
   const [output, setOutput] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [autoScroll, setAutoScroll] = useState(true);
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [logLevel, setLogLevel] = useState('all');
+  const [autoScroll] = useState(true);
 
-  // WebSocket 连接
-  useEffect(() => {
-    const apiKey = getApiKey();
-    const ws = new WebSocket(`${WS_URL}?token=${apiKey}`);
+  // 添加输出
+  const addOutput = (type, data) => {
+    setOutput(prev => [...prev, { type, data, time: new Date().toLocaleTimeString() }]);
+  };
+
+  // 连接 WebSocket
+  const connectWebSocket = (baseUrl, token) => {
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+
+    const wsUrl = baseUrl.replace(/^http/, 'ws') + `/ws?token=${encodeURIComponent(token)}`;
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
-      addOutput('system', '已连接到 ADB 控制台服务器');
+      addOutput('system', '已连接到本地代理');
     };
 
     ws.onmessage = (event) => {
@@ -93,18 +134,63 @@ const AdbConsole = () => {
             setIsRunning(false);
             break;
         }
-      } catch (e) {
-        addOutput('error', e.message);
+      } catch (err) {
+        addOutput('error', err.message);
       }
     };
 
     ws.onerror = () => {
-      addOutput('error', 'WebSocket 连接失败，请确保服务器已启动');
+      addOutput('error', 'WebSocket 连接失败，请检查本地代理是否运行');
     };
 
-    return () => {
-      ws.close();
+    ws.onclose = () => {
+      addOutput('system', 'WebSocket 连接已断开');
     };
+  };
+
+  // 处理 Token 提交（配对）
+  const handleTokenSubmit = (token) => {
+    setAgentToken(token);
+    localStorage.setItem('adb_local_agent_token', token);
+
+    if (agentBaseUrl) {
+      connectWebSocket(agentBaseUrl, token);
+      addOutput('system', 'Token 已保存，正在重新连接...');
+    }
+  };
+
+  // 刷新代理检测
+  const refreshAgentDetection = async () => {
+    setAgentDetecting(true);
+    const baseUrl = await detectLocalAgent();
+    setAgentBaseUrl(baseUrl);
+    setAgentDetecting(false);
+
+    if (baseUrl && agentToken) {
+      connectWebSocket(baseUrl, agentToken);
+    }
+  };
+
+  // 检测本地代理（组件挂载时执行一次）
+  useEffect(() => {
+    const detect = async () => {
+      setAgentDetecting(true);
+      const baseUrl = await detectLocalAgent();
+      setAgentBaseUrl(baseUrl);
+      setAgentDetecting(false);
+
+      if (baseUrl) {
+        addOutput('system', `已检测到本地代理: ${baseUrl}`);
+        // 如果有 Token，自动连接 WebSocket
+        if (agentToken) {
+          connectWebSocket(baseUrl, agentToken);
+        }
+      } else {
+        addOutput('system', '未检测到本地代理，请先下载并运行');
+      }
+    };
+    detect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 自动滚动
@@ -113,11 +199,6 @@ const AdbConsole = () => {
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
   }, [output, autoScroll]);
-
-  // 添加输出
-  const addOutput = (type, data) => {
-    setOutput(prev => [...prev, { type, data, time: new Date().toLocaleTimeString() }]);
-  };
 
   // 执行命令（流式）
   const executeStream = (command) => {
@@ -128,16 +209,24 @@ const AdbConsole = () => {
     wsRef.current.send(JSON.stringify({ type: 'exec-stream', command }));
   };
 
+  // 构建请求头
+  const getHeaders = () => ({
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${agentToken}`
+  });
+
   // 执行命令（HTTP）
   const executeHttp = async (command) => {
+    if (!agentBaseUrl) {
+      addOutput('error', '未连接到本地代理，请先配对');
+      return;
+    }
+
     addOutput('command', `$ ${command}`);
     try {
-      const res = await fetch(`${API_BASE}/adb/exec`, {
+      const res = await fetch(`${agentBaseUrl}/adb/exec`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getApiKey()}`
-        },
+        headers: getHeaders(),
         body: JSON.stringify({ command })
       });
       const data = await res.json();
@@ -154,16 +243,16 @@ const AdbConsole = () => {
 
   // 连接设备
   const handleConnect = async () => {
-    if (!connectionInput) return;
+    if (!connectionInput || !agentBaseUrl) return;
     setConnecting(true);
     try {
-      const res = await fetch(`${API_BASE}/adb/connect`, {
+      const res = await fetch(`${agentBaseUrl}/adb/connect`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getApiKey()}`
-        },
-        body: JSON.stringify({ ip: connectionInput.split(':')[0], port: connectionInput.split(':')[1] || 5555 })
+        headers: getHeaders(),
+        body: JSON.stringify({
+          ip: connectionInput.split(':')[0],
+          port: connectionInput.split(':')[1] || 5555
+        })
       });
       const data = await res.json();
       if (data.success) {
@@ -181,13 +270,11 @@ const AdbConsole = () => {
 
   // 断开连接
   const handleDisconnect = async (device) => {
+    if (!agentBaseUrl) return;
     try {
-      await fetch(`${API_BASE}/adb/disconnect`, {
+      await fetch(`${agentBaseUrl}/adb/disconnect`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getApiKey()}`
-        },
+        headers: getHeaders(),
         body: JSON.stringify({ device })
       });
       if (device === connectedDevice) setConnectedDevice(null);
@@ -200,9 +287,10 @@ const AdbConsole = () => {
 
   // 刷新设备列表
   const refreshDevices = async () => {
+    if (!agentBaseUrl) return;
     try {
-      const res = await fetch(`${API_BASE}/adb/devices`, {
-        headers: { 'Authorization': `Bearer ${getApiKey()}` }
+      const res = await fetch(`${agentBaseUrl}/adb/devices`, {
+        headers: getHeaders()
       });
       const data = await res.json();
       if (data.success) setDevices(data.devices);
@@ -274,9 +362,19 @@ const AdbConsole = () => {
             <Terminal size={18} />
           </div>
           <span className="text-base sm:text-lg font-bold text-slate-800">ADB 控制台</span>
+          {/* 本地代理状态 */}
+          {!agentDetecting && (
+            <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+              agentBaseUrl
+                ? 'bg-blue-100 text-blue-700'
+                : 'bg-slate-100 text-slate-500'
+            }`}>
+              {agentBaseUrl ? '代理已连接' : '代理未连接'}
+            </span>
+          )}
           {connectedDevice && (
             <span className="px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
-              已连接
+              设备已连接
             </span>
           )}
         </div>
@@ -289,8 +387,83 @@ const AdbConsole = () => {
       {showConsole && (
         <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-4 animate-in fade-in duration-200">
 
-          {/* 设备连接区域 */}
+          {/* 本地代理状态 */}
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                {agentDetecting ? (
+                  <RefreshCw size={18} className="text-blue-500 animate-spin" />
+                ) : agentBaseUrl ? (
+                  <Link size={18} className="text-emerald-500" />
+                ) : (
+                  <Unlink size={18} className="text-slate-400" />
+                )}
+                <span className="text-sm font-bold text-slate-700">本地代理</span>
+                {agentBaseUrl && (
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
+                    已连接
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={refreshAgentDetection}
+                disabled={agentDetecting}
+                className="px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 rounded transition-colors flex items-center gap-1"
+              >
+                <RefreshCw size={12} className={agentDetecting ? 'animate-spin' : ''} />
+                刷新
+              </button>
+            </div>
+
+            {/* 未检测到代理时显示引导 */}
+            {!agentDetecting && !agentBaseUrl && (
+              <LocalAgentGuide onTokenSubmit={handleTokenSubmit} />
+            )}
+
+            {/* 已检测到代理时显示 Token 配对 */}
+            {agentBaseUrl && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <CheckCircle size={14} className="text-emerald-500" />
+                  <span>代理地址: {agentBaseUrl}</span>
+                </div>
+
+                {/* Token 输入 */}
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <label className="text-xs font-medium text-slate-600">Token 配对</label>
+                    <button
+                      onClick={() => setShowToken(!showToken)}
+                      className="text-xs text-slate-400 hover:text-slate-600"
+                    >
+                      {showToken ? '隐藏' : '显示'}
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type={showToken ? 'text' : 'password'}
+                      value={agentToken}
+                      onChange={(e) => setAgentToken(e.target.value)}
+                      placeholder="输入本地代理显示的 Token"
+                      className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 text-xs font-mono"
+                    />
+                    <button
+                      onClick={() => handleTokenSubmit(agentToken)}
+                      className="px-3 py-2 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
+                    >
+                      配对
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">
+                    运行本地代理后会显示 Token，请复制粘贴到这里
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 设备连接区域 */}
+          <div className={`p-4 bg-slate-50 rounded-xl border border-slate-200 ${!agentBaseUrl ? 'opacity-50 pointer-events-none' : ''}`}>
             <div className="flex items-center gap-2 mb-3">
               {connectedDevice ? (
                 <Wifi size={18} className="text-emerald-500" />
@@ -298,40 +471,6 @@ const AdbConsole = () => {
                 <WifiOff size={18} className="text-slate-400" />
               )}
               <span className="text-sm font-bold text-slate-700">设备连接</span>
-            </div>
-
-            {/* API 密钥输入 */}
-            <div className="mb-3">
-              <div className="flex items-center gap-2 mb-1.5">
-                <label className="text-xs font-medium text-slate-600">API 密钥</label>
-                <button
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  className="text-xs text-slate-400 hover:text-slate-600"
-                >
-                  {showApiKey ? '隐藏' : '显示'}
-                </button>
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type={showApiKey ? 'text' : 'password'}
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                  placeholder="输入服务器 API 密钥"
-                  className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 text-xs font-mono"
-                />
-                <button
-                  onClick={() => {
-                    localStorage.setItem('adb_api_key', apiKeyInput);
-                    addOutput('system', 'API 密钥已保存');
-                  }}
-                  className="px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
-                >
-                  保存
-                </button>
-              </div>
-              <p className="text-xs text-slate-400 mt-1">
-                首次运行服务器时会显示密钥，请复制保存
-              </p>
             </div>
 
             <div className="flex gap-2 mb-3">
@@ -404,7 +543,7 @@ const AdbConsole = () => {
           </div>
 
           {/* 功能模块选择 */}
-          <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+          <div className={`grid grid-cols-4 sm:grid-cols-8 gap-2 ${!agentBaseUrl ? 'opacity-50 pointer-events-none' : ''}`}>
             {MODULES.map((mod) => {
               const Icon = mod.icon;
               return (
@@ -425,7 +564,7 @@ const AdbConsole = () => {
           </div>
 
           {/* 命令按钮区 */}
-          <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+          <div className={`bg-slate-50 rounded-xl border border-slate-200 p-4 ${!agentBaseUrl ? 'opacity-50 pointer-events-none' : ''}`}>
             <div className="flex items-center gap-2 mb-3">
               <span className="text-sm font-bold text-slate-700">
                 {MODULES.find(m => m.id === activeModule)?.label}
@@ -477,7 +616,7 @@ const AdbConsole = () => {
           </div>
 
           {/* 自定义命令输入 */}
-          <div className="flex gap-2">
+          <div className={`flex gap-2 ${!agentBaseUrl ? 'opacity-50 pointer-events-none' : ''}`}>
             <input
               type="text"
               value={customCommand}
@@ -488,10 +627,19 @@ const AdbConsole = () => {
             />
             <button
               onClick={() => executeHttp(customCommand)}
-              disabled={isRunning || !customCommand}
+              disabled={isRunning || !customCommand || !agentBaseUrl}
               className={`px-4 py-2.5 rounded-lg font-bold text-sm text-white transition-all ${theme.primaryBg} ${theme.primaryHover} disabled:opacity-50`}
+              title="执行命令"
             >
               <Play size={16} />
+            </button>
+            <button
+              onClick={() => executeStream(customCommand)}
+              disabled={isRunning || !customCommand || !agentBaseUrl}
+              className="px-4 py-2.5 rounded-lg font-bold text-sm text-white bg-purple-500 hover:bg-purple-600 transition-all disabled:opacity-50"
+              title="流式执行（适用于 logcat 等实时输出）"
+            >
+              <Terminal size={16} />
             </button>
           </div>
 

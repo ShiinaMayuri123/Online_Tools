@@ -1,0 +1,33 @@
+{
+  "name": "adb-local-agent",
+  "version": "1.0.0",
+  "description": "ADB 本地代理 - 在用户本机运行，调用本地 adb.exe",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "build": "pkg . --targets node18-win-x64 --output dist/adb-agent.exe",
+    "build:all": "pkg . --targets node18-win-x64,node18-linux-x64,node18-macos-x64 --output dist/adb-agent"
+  },
+  "bin": {
+    "adb-agent": "./index.js"
+  },
+  "pkg": {
+    "assets": [
+      "node_modules/**/*"
+    ],
+    "outputPath": "dist"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": ["adb", "android", "debug", "local-agent"],
+  "license": "MIT"
+}

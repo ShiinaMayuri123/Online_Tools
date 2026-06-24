@@ -1,0 +1,16 @@
+# 依赖
+node_modules/
+
+# 打包输出
+dist/
+
+# Token 文件（不要提交到 Git）
+agent.token
+
+# 日志
+*.log
+npm-debug.log*
+
+# 系统文件
+.DS_Store
+Thumbs.db

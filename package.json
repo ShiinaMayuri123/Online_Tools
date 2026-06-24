@@ -8,7 +8,10 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "server": "node server/index.js"
+    "server": "node server/index.js",
+    "agent": "cd local-agent && npm start",
+    "agent:install": "cd local-agent && npm install",
+    "agent:build": "cd local-agent && npm run build"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.4",
