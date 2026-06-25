@@ -8,6 +8,7 @@ import RobotRecord from './pages/RobotRecord';
 import RobotDeviceDetail from './pages/RobotDeviceDetail';
 import BaseConverter from './pages/BaseConverter';
 import IpLookup from './pages/IpLookup';
+import AdbTool from './pages/AdbTool';
 import Login from './pages/Login';
 import Admin from './pages/Admin';
 import LoadingSpinner from './components/common/LoadingSpinner';
@@ -62,6 +63,7 @@ function App() {
             {/* 管理后台 */}
             <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
             {/* 公开工具 */}
+            <Route path="/adb" element={<AdbTool />} />
             <Route path="/stitcher" element={<StitcherTool />} />
             <Route path="/password" element={<PasswordGenTool />} />
             <Route path="/base-converter" element={<BaseConverter />} />

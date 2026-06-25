@@ -4,7 +4,7 @@ import {
   HardDrive, Settings, Stethoscope, ChevronDown, ChevronRight,
   Play, Square, Trash2, Download, Terminal, X, Search, Copy, Check,
   AlertTriangle, Shield, RefreshCw, Cpu, Battery, Link, Unlink,
-  CheckCircle,
+  CheckCircle, BookOpen,
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { ADB_SECTIONS, TROUBLESHOOTING_FLOWS, LOG_FILTER_KEYWORDS } from '../../config/adbData';
@@ -85,6 +85,7 @@ const AdbConsole = () => {
   const [output, setOutput] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
   const [autoScroll] = useState(true);
+  const [showQuickStart, setShowQuickStart] = useState(false);
 
   // 添加输出
   const addOutput = (type, data) => {
@@ -387,81 +388,6 @@ const AdbConsole = () => {
       {showConsole && (
         <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-4 animate-in fade-in duration-200">
 
-          {/* 本地代理状态 */}
-          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                {agentDetecting ? (
-                  <RefreshCw size={18} className="text-blue-500 animate-spin" />
-                ) : agentBaseUrl ? (
-                  <Link size={18} className="text-emerald-500" />
-                ) : (
-                  <Unlink size={18} className="text-slate-400" />
-                )}
-                <span className="text-sm font-bold text-slate-700">本地代理</span>
-                {agentBaseUrl && (
-                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
-                    已连接
-                  </span>
-                )}
-              </div>
-              <button
-                onClick={refreshAgentDetection}
-                disabled={agentDetecting}
-                className="px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 rounded transition-colors flex items-center gap-1"
-              >
-                <RefreshCw size={12} className={agentDetecting ? 'animate-spin' : ''} />
-                刷新
-              </button>
-            </div>
-
-            {/* 未检测到代理时显示引导 */}
-            {!agentDetecting && !agentBaseUrl && (
-              <LocalAgentGuide onTokenSubmit={handleTokenSubmit} />
-            )}
-
-            {/* 已检测到代理时显示 Token 配对 */}
-            {agentBaseUrl && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                  <CheckCircle size={14} className="text-emerald-500" />
-                  <span>代理地址: {agentBaseUrl}</span>
-                </div>
-
-                {/* Token 输入 */}
-                <div>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <label className="text-xs font-medium text-slate-600">Token 配对</label>
-                    <button
-                      onClick={() => setShowToken(!showToken)}
-                      className="text-xs text-slate-400 hover:text-slate-600"
-                    >
-                      {showToken ? '隐藏' : '显示'}
-                    </button>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type={showToken ? 'text' : 'password'}
-                      value={agentToken}
-                      onChange={(e) => setAgentToken(e.target.value)}
-                      placeholder="输入本地代理显示的 Token"
-                      className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 text-xs font-mono"
-                    />
-                    <button
-                      onClick={() => handleTokenSubmit(agentToken)}
-                      className="px-3 py-2 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
-                    >
-                      配对
-                    </button>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1">
-                    运行本地代理后会显示 Token，请复制粘贴到这里
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* 设备连接区域 */}
           <div className={`p-4 bg-slate-50 rounded-xl border border-slate-200 ${!agentBaseUrl ? 'opacity-50 pointer-events-none' : ''}`}>
             <div className="flex items-center gap-2 mb-3">
@@ -686,6 +612,156 @@ const AdbConsole = () => {
                   </div>
                 ))
               )}
+            </div>
+          </div>
+
+          {/* 本地代理（包含快速开始） */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200 shadow-md overflow-hidden">
+            {/* 本地代理标题 */}
+            <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-2 rounded-lg bg-emerald-100 text-emerald-600">
+                  {agentDetecting ? (
+                    <RefreshCw size={18} className="animate-spin" />
+                  ) : agentBaseUrl ? (
+                    <Link size={18} />
+                  ) : (
+                    <Unlink size={18} />
+                  )}
+                </div>
+                <span className="text-base sm:text-lg font-bold text-slate-800">本地代理</span>
+                {agentBaseUrl && (
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
+                    已连接
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={refreshAgentDetection}
+                disabled={agentDetecting}
+                className="px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 rounded transition-colors flex items-center gap-1"
+              >
+                <RefreshCw size={12} className={agentDetecting ? 'animate-spin' : ''} />
+                刷新
+              </button>
+            </div>
+
+            {/* 本地代理内容 */}
+            <div className="px-4 sm:px-6 py-4 space-y-4">
+              {/* 未检测到代理时显示引导 */}
+              {!agentDetecting && !agentBaseUrl && (
+                <LocalAgentGuide onTokenSubmit={handleTokenSubmit} />
+              )}
+
+              {/* 已检测到代理时显示 Token 配对 */}
+              {agentBaseUrl && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <CheckCircle size={14} className="text-emerald-500" />
+                    <span>代理地址: {agentBaseUrl}</span>
+                  </div>
+
+                  {/* Token 输入 */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <label className="text-xs font-medium text-slate-600">Token 配对</label>
+                      <button
+                        onClick={() => setShowToken(!showToken)}
+                        className="text-xs text-slate-400 hover:text-slate-600"
+                      >
+                        {showToken ? '隐藏' : '显示'}
+                      </button>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type={showToken ? 'text' : 'password'}
+                        value={agentToken}
+                        onChange={(e) => setAgentToken(e.target.value)}
+                        placeholder="输入本地代理显示的 Token"
+                        className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 text-xs font-mono"
+                      />
+                      <button
+                        onClick={() => handleTokenSubmit(agentToken)}
+                        className="px-3 py-2 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
+                      >
+                        配对
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">
+                      运行本地代理后会显示 Token，请复制粘贴到这里
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 快速开始 */}
+              <div className="bg-gradient-to-br from-slate-50 to-gray-50 rounded-lg border border-slate-200 overflow-hidden">
+                <button
+                  onClick={() => setShowQuickStart(!showQuickStart)}
+                  className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Terminal size={14} className="text-emerald-500" />
+                    <span className="text-sm font-bold text-slate-700">快速开始</span>
+                  </div>
+                  <ChevronDown
+                    size={16}
+                    className={`text-slate-400 transition-transform duration-200 ${showQuickStart ? 'rotate-180' : ''}`}
+                  />
+                </button>
+
+                {showQuickStart && (
+                  <div className="px-4 pb-4 animate-in fade-in duration-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-600">
+                      <div className="space-y-2">
+                        <p className="font-bold text-slate-700">📱 WiFi 调试（推荐）</p>
+                        <ol className="list-decimal list-inside space-y-1">
+                          <li>下载并运行 <strong>ADB 本地代理</strong></li>
+                          <li>复制 Token 到网页进行配对</li>
+                          <li>手机开启 USB 调试</li>
+                          <li>首次用 USB 执行 <code className="bg-slate-100 px-1 rounded">adb tcpip 5555</code></li>
+                          <li>拔掉 USB，输入手机 IP 连接</li>
+                        </ol>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="font-bold text-slate-700">🔌 USB 调试</p>
+                        <ol className="list-decimal list-inside space-y-1">
+                          <li>下载并运行 <strong>ADB 本地代理</strong></li>
+                          <li>复制 Token 到网页进行配对</li>
+                          <li>手机开启 USB 调试</li>
+                          <li>用 USB 线连接手机</li>
+                          <li>点击"刷新设备列表"</li>
+                        </ol>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                      <p className="text-xs text-amber-700">
+                        <strong>⚠️ 注意：</strong>
+                        首次使用需要下载并运行本地代理程序。
+                        代理会在你的电脑上启动一个本地服务，用于调用 ADB 命令。
+                        程序只监听 <code className="bg-amber-100 px-1 rounded">127.0.0.1</code>，安全可靠。
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 参考详细使用指南 */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-4">
+                <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                  <BookOpen size={14} className="text-blue-500" />
+                  参考详细使用指南
+                </h4>
+                <div className="text-xs text-slate-600 space-y-2">
+                  <p>如需更详细的使用说明，请参考以下文档：</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li><a href="/docs/adb-local-agent-guide.md" target="_blank" className="text-blue-500 hover:underline">ADB 本地代理使用指南</a></li>
+                    <li><a href="https://github.com/ShiinaMayuri123/online_toolbox_vite/blob/main/local-agent/README.md" target="_blank" className="text-blue-500 hover:underline">本地代理 README</a></li>
+                    <li><a href="https://developer.android.com/studio/releases/platform-tools" target="_blank" className="text-blue-500 hover:underline">Android SDK Platform Tools</a></li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
 

@@ -1,4 +1,4 @@
-import { AlignVerticalSpaceAround, HardDrive, Package, Hash, Globe, Sparkles } from 'lucide-react';
+import { AlignVerticalSpaceAround, HardDrive, Package, Hash, Globe, Sparkles, Terminal } from 'lucide-react';
 
 /**
  * THEMES (主题配置)
@@ -84,6 +84,15 @@ export const THEMES = {
  * 新增工具只需在此数组中添加一项，首页会自动渲染对应卡片。
  */
 export const TOOLS = [
+  {
+    id: 'adb-tool',
+    path: '/adb',
+    title: 'ADB 调试助手',
+    description: '局域网 Android 设备调试工具。支持 WiFi/USB 连接，实时命令执行，设备信息查看，日志抓取等功能。',
+    icon: Terminal,
+    isPopular: false,
+    isNew: true
+  },
   {
     id: 'robot-test-record',
     path: '/robot-record',

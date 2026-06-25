@@ -37,15 +37,16 @@ const LocalAgentGuide = ({ onTokenSubmit }) => {
           <div>
             <p className="text-sm font-medium text-slate-700">下载并运行本地代理</p>
             <a
-              href="https://github.com/ShiinaMayuri123/online_toolbox_vite/releases/latest/download/adb-agent.exe"
+              href="/download-agent.html"
               target="_blank"
-              rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 mt-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
             >
               <Download size={16} />
               下载 adb-agent.exe
-              <ExternalLink size={14} />
             </a>
+            <p className="text-xs text-slate-400 mt-2">
+              点击按钮查看下载方式（支持从 GitHub 下载或自行打包）
+            </p>
           </div>
         </div>
 

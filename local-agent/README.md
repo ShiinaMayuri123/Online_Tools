@@ -2,6 +2,49 @@
 
 在用户本机运行的轻量级代理程序，调用本地 `adb.exe`，提供 HTTP API 和 WebSocket 接口，让网页能够执行 ADB 命令。
 
+## 📋 前置要求
+
+在使用本地代理之前，需要安装 ADB 工具：
+
+1. 访问 [Android SDK Platform Tools 官方下载页面](https://developer.android.com/studio/releases/platform-tools)
+2. 下载 Windows 版本的 Platform Tools
+3. 解压到任意目录（如 `C:\platform-tools`）
+4. 将目录添加到系统 PATH 环境变量，或将 `adb.exe` 复制到本程序同目录
+
+## 📥 获取方式
+
+### 方式一：从源码构建（推荐）
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/ShiinaMayuri123/online_toolbox_vite.git
+cd online_toolbox_vite/local-agent
+
+# 2. 安装依赖
+npm install
+
+# 3. 打包
+build.bat
+# 或手动打包: npm run build
+
+# 4. 输出文件在 dist/adb-agent.exe
+```
+
+### 方式二：直接运行（需要 Node.js）
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/ShiinaMayuri123/online_toolbox_vite.git
+cd online_toolbox_vite/local-agent
+
+# 2. 安装依赖
+npm install
+
+# 3. 启动
+npm start
+# 或运行 start.bat
+```
+
 ## ✨ 特性
 
 - 🔒 **安全**：只监听 `127.0.0.1`，不暴露到公网
