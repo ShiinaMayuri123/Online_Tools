@@ -442,35 +442,25 @@ const AdbConsole = () => {
                 className="flex-1 px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 text-sm font-mono"
               />
               <button
-                onClick={handleConnect}
-                disabled={connecting || !connectionInput}
+                onClick={connectedDevice ? () => handleDisconnect(connectedDevice) : handleConnect}
+                disabled={connecting || (!connectedDevice && !connectionInput)}
                 className={`px-4 py-2.5 rounded-lg font-bold text-sm text-white transition-all ${
                   connectedDevice
-                    ? 'bg-emerald-500 hover:bg-emerald-600'
+                    ? 'bg-red-500 hover:bg-red-600'
                     : `${theme.primaryBg} ${theme.primaryHover}`
                 } disabled:opacity-50`}
               >
-                {connecting ? '连接中...' : connectedDevice ? '已连接' : '连接'}
+                {connecting ? '连接中...' : connectedDevice ? '断开连接' : '连接'}
               </button>
             </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={refreshDevices}
-                className="px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1.5"
-              >
-                <RefreshCw size={14} />
-                刷新设备列表
-              </button>
-              {connectedDevice && (
-                <button
-                  onClick={() => handleDisconnect(connectedDevice)}
-                  className="px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  断开连接
-                </button>
-              )}
-            </div>
+            <button
+              onClick={refreshDevices}
+              className="px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1.5"
+            >
+              <RefreshCw size={14} />
+              刷新设备列表
+            </button>
 
             {/* 已连接设备列表 */}
             {devices.length > 0 && (
@@ -479,23 +469,18 @@ const AdbConsole = () => {
                 {devices.map((dev, i) => (
                   <div
                     key={i}
-                    className={`flex items-center justify-between p-2.5 rounded-lg border ${
+                    className={`flex items-center gap-2 p-2.5 rounded-lg border ${
                       dev.serial === connectedDevice
                         ? 'border-emerald-300 bg-emerald-50'
                         : 'border-slate-200 bg-white'
                     }`}
                   >
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${dev.state === 'device' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                      <span className="font-mono text-sm text-slate-700">{dev.serial}</span>
-                      {dev.model && <span className="text-xs text-slate-500">({dev.model})</span>}
-                    </div>
-                    <button
-                      onClick={() => handleDisconnect(dev.serial)}
-                      className="text-xs text-red-500 hover:text-red-700"
-                    >
-                      断开
-                    </button>
+                    <div className={`w-2 h-2 rounded-full ${dev.state === 'device' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                    <span className="font-mono text-sm text-slate-700">{dev.serial}</span>
+                    {dev.model && <span className="text-xs text-slate-500">({dev.model})</span>}
+                    {dev.serial === connectedDevice && (
+                      <span className="ml-auto text-xs font-bold text-emerald-600">当前</span>
+                    )}
                   </div>
                 ))}
               </div>
