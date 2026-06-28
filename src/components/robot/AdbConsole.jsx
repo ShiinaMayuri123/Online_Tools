@@ -570,6 +570,7 @@ const AdbConsole = () => {
                       <CheckCircle size={14} />
                       扫描结果
                     </h4>
+                    {/* 基本信息 */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                       {[
                         { label: 'Android 版本', key: 'android_version' },
@@ -580,11 +581,14 @@ const AdbConsole = () => {
                         { label: '屏幕密度', key: 'screen_density' },
                         { label: '设备时间', key: 'device_time' },
                         { label: '运行时长', key: 'uptime' },
+                        { label: 'IP 地址', key: 'ip_address' },
                       ].map(({ label, key }) => (
                         <div key={key} className="flex justify-between gap-2 py-1.5 border-b border-slate-100">
                           <span className="text-slate-500 shrink-0">{label}</span>
-                          <span className="font-mono text-slate-700 text-right truncate">
-                            {deviceInfoResult[key]?.value || '-'}
+                          <span className="font-mono text-slate-700 text-right truncate" title={typeof deviceInfoResult[key]?.value === 'string' ? deviceInfoResult[key].value : ''}>
+                            {typeof deviceInfoResult[key]?.value === 'string'
+                              ? deviceInfoResult[key].value.split('\n')[0]
+                              : deviceInfoResult[key]?.value || '-'}
                           </span>
                         </div>
                       ))}
@@ -595,11 +599,49 @@ const AdbConsole = () => {
                         <Battery size={16} className="text-green-600" />
                         <span className="text-xs font-bold text-green-700">
                           电量 {deviceInfoResult.battery_status.value.level}%
-                          · 温度 {(deviceInfoResult.battery_status.value.temperature)}°C
+                          · 温度 {deviceInfoResult.battery_status.value.temperature}°C
                           · {deviceInfoResult.battery_status.value.status}
                         </span>
                       </div>
                     )}
+                    {/* 详细信息（可展开） */}
+                    <details className="text-xs">
+                      <summary className="cursor-pointer text-slate-500 hover:text-slate-700 font-medium">
+                        查看详细信息（CPU / 内存 / 磁盘）
+                      </summary>
+                      <div className="mt-2 space-y-3">
+                        {deviceInfoResult.cpu_info?.value && (
+                          <div>
+                            <p className="font-bold text-slate-600 mb-1">CPU 信息</p>
+                            <pre className="bg-slate-50 p-2 rounded text-[10px] overflow-x-auto max-h-32 whitespace-pre-wrap">
+                              {deviceInfoResult.cpu_info.value.split('\n').filter(l => l.trim()).slice(0, 8).join('\n')}
+                            </pre>
+                          </div>
+                        )}
+                        {deviceInfoResult.memory_info?.value && (
+                          <div>
+                            <p className="font-bold text-slate-600 mb-1">内存信息</p>
+                            <pre className="bg-slate-50 p-2 rounded text-[10px] overflow-x-auto max-h-32 whitespace-pre-wrap">
+                              {deviceInfoResult.memory_info.value.split('\n').filter(l => l.trim()).slice(0, 6).join('\n')}
+                            </pre>
+                          </div>
+                        )}
+                        {deviceInfoResult.disk_usage?.value && Array.isArray(deviceInfoResult.disk_usage.value) && (
+                          <div>
+                            <p className="font-bold text-slate-600 mb-1">磁盘使用</p>
+                            <div className="space-y-1">
+                              {deviceInfoResult.disk_usage.value.map((disk, i) => (
+                                <div key={i} className="flex justify-between gap-2 bg-slate-50 p-1.5 rounded">
+                                  <span className="font-mono text-slate-600">{disk.filesystem}</span>
+                                  <span className="text-slate-500">{disk.used}/{disk.size}</span>
+                                  <span className="font-bold text-slate-700">{disk.usage}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </details>
                     {/* 导出按钮 */}
                     <button
                       onClick={() => {
