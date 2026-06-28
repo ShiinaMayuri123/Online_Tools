@@ -16,9 +16,11 @@ if (-not (Get-Command node -EA SilentlyContinue)) {
     return
 }
 
-Write-Host '  [1/3] Downloading...' -ForegroundColor Yellow
+# Step 1: Download
+Write-Host '  [1/4] Downloading...' -ForegroundColor Yellow
 $zip = "$env:TEMP\adb-agent.zip"
-$dest = "$env:USERPROFILE\Online_Tools-main\local-agent"
+$root = "$env:USERPROFILE\Online_Tools-main"
+$dest = "$root\local-agent"
 
 try {
     Invoke-WebRequest -Uri 'https://github.com/ShiinaMayuri123/Online_Tools/archive/refs/heads/main.zip' -OutFile $zip
@@ -30,17 +32,25 @@ try {
     return
 }
 
-Write-Host '  [2/3] Installing dependencies...' -ForegroundColor Yellow
+# Step 2: Build frontend
+Write-Host '  [2/4] Building frontend...' -ForegroundColor Yellow
+Set-Location $root
+npm install --silent
+npm run build --silent
+
+# Step 3: Install agent dependencies
+Write-Host '  [3/4] Installing agent dependencies...' -ForegroundColor Yellow
 Set-Location $dest
 npm install --silent
 
-# Create start.bat
+# Step 4: Create start.bat
 $startContent = "@echo off`r`nchcp 65001 >nul`r`ncd /d `"%~dp0`"`r`nnode index.js`r`npause"
 Set-Content -Path "$dest\start.bat" -Value $startContent -Encoding ASCII
 
-Write-Host '  [3/3] Done!' -ForegroundColor Green
+Write-Host '  [4/4] Done!' -ForegroundColor Green
 Write-Host ''
 Write-Host '  ========================================' -ForegroundColor Cyan
+Write-Host '    Browser will open automatically.' -ForegroundColor White
 Write-Host '    Next time: double-click start.bat' -ForegroundColor White
 Write-Host "    Path: $dest\start.bat" -ForegroundColor Gray
 Write-Host '  ========================================' -ForegroundColor Cyan

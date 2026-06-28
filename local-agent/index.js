@@ -14,13 +14,17 @@ import { WebSocketServer } from 'ws';
 import { spawn, exec } from 'child_process';
 import crypto from 'crypto';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { findAdb, checkAdbAvailable } from './adb-finder.js';
 import { findAvailablePort, DEFAULT_PORT } from './port-finder.js';
 
 // ============ 配置 ============
 
-const TOKEN_FILE = join(import.meta.dirname, 'agent.token');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const DIST_DIR = join(__dirname, '..', 'dist');
+const TOKEN_FILE = join(__dirname, 'agent.token');
 const ALLOWED_ORIGINS = ['*']; // 开发时允许所有来源，生产环境改为你的域名
 
 // ============ Token 管理 ============
@@ -556,6 +560,23 @@ wss.on('connection', (ws, req) => {
   });
 });
 
+// ============ 静态文件服务（前端页面） ============
+
+// 如果 dist 目录存在，托管前端页面
+if (existsSync(DIST_DIR)) {
+  app.use(express.static(DIST_DIR));
+  // SPA fallback：非 API 路由都返回 index.html
+  app.get('*', (req, res) => {
+    if (req.path.startsWith('/adb/') || req.path.startsWith('/health') || req.path.startsWith('/token') || req.path.startsWith('/ws')) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    res.sendFile(join(DIST_DIR, 'index.html'));
+  });
+  console.log(`[前端] 已加载: ${DIST_DIR}`);
+} else {
+  console.log('[前端] 未找到 dist 目录，仅提供 API 服务');
+}
+
 // ============ 启动服务器 ============
 
 async function start() {
@@ -563,9 +584,13 @@ async function start() {
 
   server.listen(port, '127.0.0.1', () => {
     const actualPort = server.address().port;
+    const hasFrontend = existsSync(DIST_DIR);
     console.log('\n========================================');
     console.log('  ADB 本地代理已启动');
     console.log(`  地址: http://127.0.0.1:${actualPort}`);
+    if (hasFrontend) {
+      console.log(`  前端: http://127.0.0.1:${actualPort}/`);
+    }
     console.log(`  WebSocket: ws://127.0.0.1:${actualPort}/ws`);
     console.log(`  API Token: ${API_TOKEN}`);
     console.log('========================================');
@@ -573,7 +598,10 @@ async function start() {
 
     // 尝试打开浏览器
     try {
-      exec(`start http://127.0.0.1:${actualPort}/setup`);
+      const url = hasFrontend
+        ? `http://127.0.0.1:${actualPort}/`
+        : `http://127.0.0.1:${actualPort}/setup`;
+      exec(`start ${url}`);
     } catch (e) {
       // 忽略打开浏览器失败
     }
