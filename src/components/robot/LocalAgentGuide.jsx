@@ -12,7 +12,7 @@ const LocalAgentGuide = ({ onTokenSubmit }) => {
   const [showGuide, setShowGuide] = useState(false);
   const [copiedCmd, setCopiedCmd] = useState(false);
 
-  const QUICK_SETUP_CMD = 'cd $env:USERPROFILE; Invoke-WebRequest -Uri "https://github.com/ShiinaMayuri123/online_toolbox_vite/archive/refs/heads/main.zip" -OutFile "toolbox.zip"; Expand-Archive -Path "toolbox.zip" -DestinationPath "." -Force; cd "online_toolbox_vite-main\\local-agent"; npm install; node index.js';
+  const QUICK_SETUP_CMD = 'cd $env:USERPROFILE; Invoke-WebRequest -Uri "https://github.com/ShiinaMayuri123/Online_Tools/archive/refs/heads/main.zip" -OutFile "toolbox.zip"; Expand-Archive -Path "toolbox.zip" -DestinationPath "." -Force; cd "Online_Tools-main\\local-agent"; npm install; node index.js';
 
   const handleCopyCmd = () => {
     navigator.clipboard.writeText(QUICK_SETUP_CMD).then(() => {

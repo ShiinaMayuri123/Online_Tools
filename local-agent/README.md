@@ -17,8 +17,8 @@
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/ShiinaMayuri123/online_toolbox_vite.git
-cd online_toolbox_vite/local-agent
+git clone https://github.com/ShiinaMayuri123/Online_Tools.git
+cd Online_Tools/local-agent
 
 # 2. 安装依赖
 npm install
@@ -34,8 +34,8 @@ build.bat
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/ShiinaMayuri123/online_toolbox_vite.git
-cd online_toolbox_vite/local-agent
+git clone https://github.com/ShiinaMayuri123/Online_Tools.git
+cd Online_Tools/local-agent
 
 # 2. 安装依赖
 npm install
@@ -52,6 +52,7 @@ npm start
 - 🛡️ **命令白名单**：只允许执行 ADB 命令，禁止危险操作
 - 📍 **自动检测**：自动查找用户电脑上的 `adb.exe`
 - 🌐 **跨平台**：支持 Windows、macOS、Linux
+- 📊 **一键扫描**：支持批量执行 15 条 ADB 命令，一次性获取设备全部信息
 
 ## 📋 前置要求
 
@@ -113,6 +114,59 @@ npm run build
 4. **执行命令**
    - 使用预设的命令按钮
    - 或输入自定义 ADB 命令
+   - 或使用"一键扫描"批量获取设备信息
+
+## 📡 API 接口
+
+### 一键扫描设备信息
+
+批量执行 15 条 ADB 命令，一次性获取设备全部基本信息。
+
+```
+POST /adb/device-info/scan
+Authorization: Bearer <token>
+```
+
+返回字段：
+| 字段 | 说明 | ADB 命令 |
+|------|------|----------|
+| `devices_l` | 连接设备列表 | `adb devices -l` |
+| `android_version` | Android 版本 | `adb shell getprop ro.build.version.release` |
+| `device_model` | 设备型号 | `adb shell getprop ro.product.model` |
+| `device_name` | 设备品牌 | `adb shell getprop ro.product.brand` |
+| `serial_number` | 序列号 | `adb shell getprop ro.serialno` |
+| `screen_resolution` | 屏幕分辨率 | `adb shell wm size` |
+| `screen_density` | 屏幕密度 | `adb shell wm density` |
+| `battery_status` | 电池状态 | `adb shell dumpsys battery` |
+| `device_time` | 设备时间 | `adb shell date` |
+| `uptime` | 运行时长 | `adb shell uptime` |
+| `cpu_info` | CPU 信息 | `adb shell cat /proc/cpuinfo` |
+| `memory_info` | 内存信息 | `adb shell cat /proc/meminfo` |
+| `disk_usage` | 磁盘使用 | `adb shell df -h` |
+| `ip_address` | IP 地址 | `adb shell ip addr` |
+
+返回示例：
+```json
+{
+  "success": true,
+  "data": {
+    "android_version": { "value": "8.1.0", "error": null },
+    "device_model": { "value": "NanoPC-T4", "error": null },
+    "battery_status": { "value": { "level": 85, "status": "Charging", "temperature": 26.0, "health": "Good" }, "error": null }
+  }
+}
+```
+
+### 其他接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/health` | 健康检查（无需认证） |
+| `GET` | `/adb/devices` | 获取设备列表 |
+| `POST` | `/adb/connect` | 连接设备 |
+| `POST` | `/adb/disconnect` | 断开连接 |
+| `POST` | `/adb/exec` | 执行单条 ADB 命令 |
+| `WS` | `/ws?token=xxx` | WebSocket 实时输出 |
 
 ## 🔧 配置
 
@@ -175,6 +229,16 @@ npm start
 A: 点击"允许访问"，选择"专用网络"。程序只监听本地，不会有安全风险。
 
 ### Q: 如何连接 WiFi 调试的设备？
+
+A: 
+1. 先用 USB 连接手机
+2. 执行 `adb tcpip 5555`
+3. 拔掉 USB
+4. 在网页上输入手机的局域网 IP 地址
+
+### Q: Node.js v24 报错 `SyntaxError: Unexpected reserved word` 怎么办？
+
+A: 这是 Node.js v24 对 `await import()` 的兼容性问题。已修复：将 `child_process` 改为文件顶部静态导入。请确保使用最新版本代码。
 
 A: 
 1. 先用 USB 连接手机

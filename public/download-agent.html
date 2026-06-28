@@ -259,9 +259,12 @@
           <span>复制粘贴以下命令并回车：</span>
         </div>
       </div>
-      <div style="background: #1a1a2e; color: #a0e0a0; padding: 16px; border-radius: 8px; margin-top: 12px; font-family: 'Courier New', monospace; font-size: 13px; overflow-x: auto; white-space: pre-wrap; word-break: break-all;">cd $env:USERPROFILE; Invoke-WebRequest -Uri "https://github.com/ShiinaMayuri123/online_toolbox_vite/archive/refs/heads/main.zip" -OutFile "toolbox.zip"; Expand-Archive -Path "toolbox.zip" -DestinationPath "." -Force; cd "online_toolbox_vite-main\local-agent"; npm install; node index.js</div>
+      <div style="background: #1a1a2e; color: #a0e0a0; padding: 16px; border-radius: 8px; margin-top: 12px; font-family: 'Courier New', monospace; font-size: 13px; overflow-x: auto; white-space: pre-wrap; word-break: break-all;">cd $env:USERPROFILE; Invoke-WebRequest -Uri "https://github.com/ShiinaMayuri123/Online_Tools/archive/refs/heads/main.zip" -OutFile "toolbox.zip"; Expand-Archive -Path "toolbox.zip" -DestinationPath "." -Force; cd "Online_Tools-main\local-agent"; npm install; node index.js</div>
       <p style="margin-top: 8px; font-size: 13px; color: #888;">
         💡 此命令会自动下载代理程序、安装依赖并启动。启动后请复制显示的 Token 回到网页配对。
+      </p>
+      <p style="margin-top: 4px; font-size: 13px; color: #c00;">
+        ⚠️ 如果仓库是私有的，需要先登录 GitHub 或使用 <code class="code">git clone</code> 方式。
       </p>
       <div class="btn-group">
         <a href="https://nodejs.org/" target="_blank" class="btn btn-success">
@@ -282,7 +285,7 @@
       <div class="steps">
         <div class="step">
           <span class="step-num">1</span>
-          <span>下载仓库 ZIP：<a href="https://github.com/ShiinaMayuri123/online_toolbox_vite/archive/refs/heads/main.zip" target="_blank">点击下载</a>，或 <code class="code">git clone</code> 克隆仓库</span>
+          <span>下载仓库 ZIP：<a href="https://github.com/ShiinaMayuri123/Online_Tools/archive/refs/heads/main.zip" target="_blank">点击下载</a>，或 <code class="code">git clone</code> 克隆仓库</span>
         </div>
         <div class="step">
           <span class="step-num">2</span>
@@ -298,7 +301,7 @@
         </div>
       </div>
       <div class="btn-group">
-        <a href="https://github.com/ShiinaMayuri123/online_toolbox_vite" target="_blank" class="btn btn-primary">
+        <a href="https://github.com/ShiinaMayuri123/Online_Tools" target="_blank" class="btn btn-primary">
           🚀 访问 GitHub 仓库
         </a>
       </div>

@@ -92,7 +92,7 @@ SHA256: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 ```javascript
 <a
-  href="https://github.com/your-username/your-repo/releases/latest/download/adb-agent.exe"
+  href="https://github.com/ShiinaMayuri123/Online_Tools/releases/latest/download/adb-agent.exe"
   target="_blank"
   rel="noopener noreferrer"
   className="..."
@@ -103,6 +103,10 @@ SHA256: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 ## 📊 版本历史
+
+### v1.1.0 (2026-06-28)
+- 新增一键扫描设备信息 API（`POST /adb/device-info/scan`），并发执行 15 条 ADB 命令
+- 修复 Node.js v24 兼容性问题（`await import()` 改为静态导入）
 
 ### v1.0.0 (2026-06-24)
 - 初始版本

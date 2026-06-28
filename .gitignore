@@ -31,6 +31,7 @@ dist-ssr
 
 # Claude Code local settings
 .claude/
+CLAUDE.md
 
 # External projects
 everything-claude-code/

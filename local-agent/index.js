@@ -11,7 +11,7 @@
 import express from 'express';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
-import { spawn } from 'child_process';
+import { spawn, exec } from 'child_process';
 import crypto from 'crypto';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -467,7 +467,6 @@ async function start() {
 
     // 尝试打开浏览器
     try {
-      const { exec } = await import('child_process');
       exec(`start http://127.0.0.1:${actualPort}/setup`);
     } catch (e) {
       // 忽略打开浏览器失败
