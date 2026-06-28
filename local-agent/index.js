@@ -251,6 +251,118 @@ app.post('/adb/exec', checkAuth, async (req, res) => {
   }
 });
 
+/**
+ * 解析 adb devices -l 输出为设备对象数组
+ * @param {string} stdout - 原始输出
+ * @returns {Array<{serial: string, state: string, details: object}>}
+ */
+function parseDevices(stdout) {
+  const lines = stdout.split('\n').filter(line => line.trim() && !line.startsWith('List'));
+  return lines.map(line => {
+    const parts = line.split(/\s+/);
+    const serial = parts[0];
+    const state = parts[1];
+    const details = {};
+    parts.slice(2).forEach(p => {
+      const [key, val] = p.split(':');
+      if (key && val) details[key] = val;
+    });
+    return { serial, state, details };
+  });
+}
+
+/**
+ * 解析 dumpsys battery 输出为结构化对象
+ * @param {string} stdout - 原始输出
+ * @returns {{level: number|null, status: string|null, temperature: number|null, health: string|null}}
+ */
+function parseBattery(stdout) {
+  const getVal = (key) => {
+    const match = stdout.match(new RegExp(key + ':\\s*(.+)'));
+    return match ? match[1].trim() : null;
+  };
+  const level = getVal('level');
+  const temperature = getVal('temperature');
+  return {
+    level: level ? parseInt(level, 10) : null,
+    status: getVal('status'),
+    temperature: temperature ? parseInt(temperature, 10) / 10 : null,
+    health: getVal('health'),
+  };
+}
+
+/**
+ * 解析 df -h 输出为磁盘使用数组
+ * @param {string} stdout - 原始输出
+ * @returns {Array<{filesystem: string, size: string, used: string, available: string, usage: string}>}
+ */
+function parseDiskUsage(stdout) {
+  const lines = stdout.split('\n').filter(line => line.trim() && !line.startsWith('Filesystem'));
+  return lines.map(line => {
+    const parts = line.split(/\s+/);
+    return {
+      filesystem: parts[0] || '',
+      size: parts[1] || '',
+      used: parts[2] || '',
+      available: parts[3] || '',
+      usage: parts[4] || '',
+    };
+  });
+}
+
+// 扫描设备完整信息（并发执行 15 条 ADB 命令）
+app.post('/adb/device-info/scan', checkAuth, async (req, res) => {
+  // 定义 15 条 ADB 命令
+  const commands = [
+    { key: 'devices_l', args: ['devices', '-l'] },
+    { key: 'android_version', args: ['shell', 'getprop', 'ro.build.version.release'] },
+    { key: 'device_model', args: ['shell', 'getprop', 'ro.product.model'] },
+    { key: 'device_name', args: ['shell', 'getprop', 'ro.product.brand'] },
+    { key: 'serial_number', args: ['shell', 'getprop', 'ro.serialno'] },
+    { key: 'screen_resolution', args: ['shell', 'wm', 'size'] },
+    { key: 'screen_density', args: ['shell', 'wm', 'density'] },
+    { key: 'battery_status', args: ['shell', 'dumpsys', 'battery'] },
+    { key: 'device_time', args: ['shell', 'date'] },
+    { key: 'uptime', args: ['shell', 'uptime'] },
+    { key: 'cpu_info', args: ['shell', 'cat', '/proc/cpuinfo'] },
+    { key: 'memory_info', args: ['shell', 'cat', '/proc/meminfo'] },
+    { key: 'disk_usage', args: ['shell', 'df', '-h'] },
+    { key: 'ip_address', args: ['shell', 'ip', 'addr'] },
+    { key: 'getprop', args: ['shell', 'getprop'] },
+  ];
+
+  // 并发执行所有命令，单条失败不影响其他
+  const results = await Promise.allSettled(
+    commands.map(cmd => runAdb(cmd.args, { timeout: 10000 }))
+  );
+
+  // 组装返回数据
+  const data = {};
+  commands.forEach((cmd, i) => {
+    const result = results[i];
+    if (result.status === 'fulfilled' && result.value.code === 0) {
+      const stdout = result.value.stdout.trim();
+      // 特殊字段解析
+      if (cmd.key === 'devices_l') {
+        data[cmd.key] = { value: parseDevices(result.value.stdout), error: null };
+      } else if (cmd.key === 'battery_status') {
+        data[cmd.key] = { value: parseBattery(stdout), error: null };
+      } else if (cmd.key === 'disk_usage') {
+        data[cmd.key] = { value: parseDiskUsage(stdout), error: null };
+      } else {
+        data[cmd.key] = { value: stdout, error: null };
+      }
+    } else {
+      const errMsg = result.status === 'rejected'
+        ? result.reason?.message || '命令执行失败'
+        : result.value.stderr?.trim() || `退出码: ${result.value.code}`;
+      data[cmd.key] = { value: null, error: errMsg };
+    }
+  });
+
+  res.json({ success: true, data });
+});
+
 // ============ WebSocket ============
 
 const server = createServer(app);

@@ -236,51 +236,13 @@
       </div>
     </div>
 
-    <!-- 方式一：从源码构建 -->
+    <!-- 方式一：一键下载运行（推荐） -->
     <div class="section section-1">
-      <div class="section-header">
-        <div class="section-icon">🔧</div>
-        <div>
-          <h3>获取本地代理：从源码构建</h3>
-          <p>从 GitHub 克隆仓库并打包成可执行文件</p>
-        </div>
-      </div>
-      <div class="steps">
-        <div class="step">
-          <span class="step-num">1</span>
-          <span>克隆仓库：<code class="code">git clone https://github.com/ShiinaMayuri123/online_toolbox_vite.git</code></span>
-        </div>
-        <div class="step">
-          <span class="step-num">2</span>
-          <span>进入目录：<code class="code">cd online_toolbox_vite/local-agent</code></span>
-        </div>
-        <div class="step">
-          <span class="step-num">3</span>
-          <span>安装依赖：<code class="code">npm install</code></span>
-        </div>
-        <div class="step">
-          <span class="step-num">4</span>
-          <span>运行打包脚本：<code class="code">build.bat</code></span>
-        </div>
-        <div class="step">
-          <span class="step-num">5</span>
-          <span>输出文件在 <code class="code">dist/adb-agent.exe</code></span>
-        </div>
-      </div>
-      <div class="btn-group">
-        <a href="https://github.com/ShiinaMayuri123/online_toolbox_vite" target="_blank" class="btn btn-primary">
-          🚀 访问 GitHub 仓库
-        </a>
-      </div>
-    </div>
-
-    <!-- 方式二：直接运行（不打包） -->
-    <div class="section section-2">
       <div class="section-header">
         <div class="section-icon">⚡</div>
         <div>
-          <h3>快速方式：直接运行（不打包）</h3>
-          <p>如果你已安装 Node.js，可以直接运行源码</p>
+          <h3>方式一：一键下载并运行（推荐）</h3>
+          <p>只需安装 Node.js，复制下方命令到 PowerShell 执行即可</p>
         </div>
       </div>
       <div class="steps">
@@ -290,24 +252,54 @@
         </div>
         <div class="step">
           <span class="step-num">2</span>
-          <span>克隆仓库：<code class="code">git clone https://github.com/ShiinaMayuri123/online_toolbox_vite.git</code></span>
+          <span>按 <code class="code">Win + X</code>，选择 <strong>Windows PowerShell</strong></span>
         </div>
         <div class="step">
           <span class="step-num">3</span>
-          <span>进入目录：<code class="code">cd online_toolbox_vite/local-agent</code></span>
+          <span>复制粘贴以下命令并回车：</span>
+        </div>
+      </div>
+      <div style="background: #1a1a2e; color: #a0e0a0; padding: 16px; border-radius: 8px; margin-top: 12px; font-family: 'Courier New', monospace; font-size: 13px; overflow-x: auto; white-space: pre-wrap; word-break: break-all;">cd $env:USERPROFILE; Invoke-WebRequest -Uri "https://github.com/ShiinaMayuri123/online_toolbox_vite/archive/refs/heads/main.zip" -OutFile "toolbox.zip"; Expand-Archive -Path "toolbox.zip" -DestinationPath "." -Force; cd "online_toolbox_vite-main\local-agent"; npm install; node index.js</div>
+      <p style="margin-top: 8px; font-size: 13px; color: #888;">
+        💡 此命令会自动下载代理程序、安装依赖并启动。启动后请复制显示的 Token 回到网页配对。
+      </p>
+      <div class="btn-group">
+        <a href="https://nodejs.org/" target="_blank" class="btn btn-success">
+          📥 先安装 Node.js
+        </a>
+      </div>
+    </div>
+
+    <!-- 方式二：手动下载 -->
+    <div class="section section-2">
+      <div class="section-header">
+        <div class="section-icon">🔧</div>
+        <div>
+          <h3>方式二：手动下载</h3>
+          <p>从 GitHub 下载源码，手动运行</p>
+        </div>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <span class="step-num">1</span>
+          <span>下载仓库 ZIP：<a href="https://github.com/ShiinaMayuri123/online_toolbox_vite/archive/refs/heads/main.zip" target="_blank">点击下载</a>，或 <code class="code">git clone</code> 克隆仓库</span>
+        </div>
+        <div class="step">
+          <span class="step-num">2</span>
+          <span>解压后进入 <code class="code">local-agent</code> 文件夹</span>
+        </div>
+        <div class="step">
+          <span class="step-num">3</span>
+          <span>双击 <code class="code">start.bat</code>（自动安装依赖并启动）</span>
         </div>
         <div class="step">
           <span class="step-num">4</span>
-          <span>安装依赖：<code class="code">npm install</code></span>
-        </div>
-        <div class="step">
-          <span class="step-num">5</span>
-          <span>启动：<code class="code">npm start</code> 或 <code class="code">start.bat</code></span>
+          <span>如果 <code class="code">start.bat</code> 不可用，打开终端手动执行：<code class="code">npm install</code> 然后 <code class="code">npm start</code></span>
         </div>
       </div>
       <div class="btn-group">
-        <a href="https://nodejs.org/" target="_blank" class="btn btn-success">
-          📥 下载 Node.js
+        <a href="https://github.com/ShiinaMayuri123/online_toolbox_vite" target="_blank" class="btn btn-primary">
+          🚀 访问 GitHub 仓库
         </a>
       </div>
     </div>

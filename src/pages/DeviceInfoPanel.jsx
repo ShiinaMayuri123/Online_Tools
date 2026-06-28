@@ -1,6 +1,37 @@
-import { useState } from 'react';
-import { Loader, Play, Download, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Loader, Play, Download, AlertCircle, CheckCircle, Clock, RefreshCw, Link, Unlink, Shield } from 'lucide-react';
 import ToolLayout from '../components/common/ToolLayout';
+
+// ============ 本地代理配置 ============
+
+// 候选端口列表（与 AdbConsole 保持一致）
+const AGENT_PORTS = [5038, 5039, 5040, 12553, 12554];
+
+/**
+ * 检测本地代理是否运行
+ * @returns {Promise<string|null>} 代理地址，未检测到返回 null
+ */
+async function detectLocalAgent() {
+  for (const port of AGENT_PORTS) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/health`, {
+        method: 'GET',
+        cache: 'no-store',
+        mode: 'cors',
+        signal: AbortSignal.timeout(1000)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok) {
+          return `http://127.0.0.1:${port}`;
+        }
+      }
+    } catch {
+      // 继续尝试下一个端口
+    }
+  }
+  return null;
+}
 
 /**
  * 设备信息快速扫描面板
@@ -10,26 +41,63 @@ export default function DeviceInfoPanel() {
   const [scanning, setScanning] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState(null);
   const [error, setError] = useState('');
-  const [scanProgress, setScanProgress] = useState(0);
-  const [agentToken, setAgentToken] = useState(localStorage.getItem('adbAgentToken'));
-  const [agentUrl, setAgentUrl] = useState(localStorage.getItem('adbAgentUrl'));
+
+  // 本地代理状态
+  const [agentBaseUrl, setAgentBaseUrl] = useState(null);
+  const [agentDetecting, setAgentDetecting] = useState(true);
+  const [agentToken, setAgentToken] = useState(localStorage.getItem('adb_local_agent_token') || '');
+  const [showToken, setShowToken] = useState(false);
+
+  // 组件挂载时自动检测本地代理
+  useEffect(() => {
+    const detect = async () => {
+      setAgentDetecting(true);
+      const baseUrl = await detectLocalAgent();
+      setAgentBaseUrl(baseUrl);
+      setAgentDetecting(false);
+    };
+    detect();
+  }, []);
+
+  // 刷新代理检测
+  const refreshAgentDetection = async () => {
+    setAgentDetecting(true);
+    const baseUrl = await detectLocalAgent();
+    setAgentBaseUrl(baseUrl);
+    setAgentDetecting(false);
+  };
+
+  // 处理 Token 提交（配对）
+  const handleTokenSubmit = (token) => {
+    setAgentToken(token);
+    localStorage.setItem('adb_local_agent_token', token);
+  };
 
   const handleScan = async () => {
-    if (!agentToken || !agentUrl) {
-      setError('请先配对 ADB 本地代理');
+    // 动态检测代理地址
+    const currentToken = localStorage.getItem('adb_local_agent_token') || agentToken;
+    const currentAgentUrl = await detectLocalAgent();
+
+    if (!currentAgentUrl) {
+      setError('未检测到本地代理，请先下载并运行本地代理程序');
+      return;
+    }
+    if (!currentToken) {
+      setError('未配对，请输入本地代理显示的 Token 完成配对');
       return;
     }
 
+    // 更新检测到的地址
+    setAgentBaseUrl(currentAgentUrl);
     setScanning(true);
     setError('');
-    setScanProgress(0);
     setDeviceInfo(null);
 
     try {
-      const response = await fetch(`${agentUrl}/adb/device-info/scan`, {
+      const response = await fetch(`${currentAgentUrl}/adb/device-info/scan`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${agentToken}`,
+          'Authorization': `Bearer ${currentToken}`,
           'Content-Type': 'application/json'
         }
       });
@@ -41,7 +109,6 @@ export default function DeviceInfoPanel() {
       const data = await response.json();
       if (data.success) {
         setDeviceInfo(data.data);
-        setScanProgress(100);
       } else {
         setError(data.error || '获取设备信息失败');
       }
@@ -68,7 +135,93 @@ export default function DeviceInfoPanel() {
       title="设备信息快速扫描"
       description="一键获取设备的所有基本信息，包括系统版本、硬件配置、网络信息等"
     >
-      {/* ===== 头部控制区 ===== */}
+      {/* ===== 本地代理状态 + 配对 ===== */}
+      <div className="mb-6 p-5 bg-gradient-to-r from-slate-50 to-gray-50 rounded-lg border border-slate-200">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-600">
+              {agentDetecting ? (
+                <RefreshCw size={16} className="animate-spin" />
+              ) : agentBaseUrl ? (
+                <Link size={16} />
+              ) : (
+                <Unlink size={16} />
+              )}
+            </div>
+            <span className="text-sm font-bold text-slate-700">本地代理</span>
+            {!agentDetecting && (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                agentBaseUrl
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-slate-100 text-slate-500'
+              }`}>
+                {agentBaseUrl ? '已连接' : '未检测到'}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={refreshAgentDetection}
+            disabled={agentDetecting}
+            className="px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 rounded transition-colors flex items-center gap-1"
+          >
+            <RefreshCw size={12} className={agentDetecting ? 'animate-spin' : ''} />
+            刷新
+          </button>
+        </div>
+
+        {/* 未检测到代理 - 引导提示 */}
+        {!agentDetecting && !agentBaseUrl && (
+          <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+            <p className="text-xs text-amber-700">
+              <strong>未检测到本地代理。</strong>
+              请先下载并运行 ADB 本地代理程序，代理会在你的电脑上启动一个本地服务（仅监听 127.0.0.1）。
+            </p>
+            <a
+              href="/download-agent.html"
+              target="_blank"
+              className="inline-flex items-center gap-1 mt-2 text-xs text-blue-600 hover:underline"
+            >
+              📥 查看下载和安装指南
+            </a>
+          </div>
+        )}
+
+        {/* 已检测到代理 - Token 配对 */}
+        {agentBaseUrl && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <CheckCircle size={12} className="text-emerald-500" />
+              <span>代理地址: {agentBaseUrl}</span>
+            </div>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Shield size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type={showToken ? 'text' : 'password'}
+                  value={agentToken}
+                  onChange={(e) => setAgentToken(e.target.value)}
+                  placeholder="输入本地代理显示的 Token"
+                  className="w-full pl-9 pr-14 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 text-xs font-mono"
+                />
+                <button
+                  onClick={() => setShowToken(!showToken)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600"
+                >
+                  {showToken ? '隐藏' : '显示'}
+                </button>
+              </div>
+              <button
+                onClick={() => handleTokenSubmit(agentToken)}
+                className="px-3 py-2 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
+              >
+                配对
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ===== 扫描控制区 ===== */}
       <div className="mb-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex-1 min-w-[200px]">
@@ -77,7 +230,7 @@ export default function DeviceInfoPanel() {
               {scanning ? (
                 <>
                   <Loader className="w-5 h-5 text-blue-500 animate-spin" />
-                  <span className="text-sm text-gray-600">正在扫描 ({scanProgress}%)</span>
+                  <span className="text-sm text-gray-600">正在扫描...</span>
                 </>
               ) : deviceInfo ? (
                 <>
@@ -117,13 +270,10 @@ export default function DeviceInfoPanel() {
           )}
         </div>
 
-        {/* 进度条 */}
+        {/* Indeterminate 进度条（纯 CSS 动画） */}
         {scanning && (
           <div className="mt-4 w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-            <div
-              className="bg-gradient-to-r from-blue-500 to-indigo-600 h-full transition-all duration-300"
-              style={{ width: `${scanProgress}%` }}
-            />
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 h-full w-1/3 rounded-full animate-[indeterminate_1.5s_ease-in-out_infinite]" />
           </div>
         )}
       </div>
@@ -229,7 +379,7 @@ export default function DeviceInfoPanel() {
       )}
 
       {/* ===== 空状态 ===== */}
-      {!deviceInfo && !scanning && !error && (
+      {!deviceInfo && !scanning && !error && !agentDetecting && (
         <div className="text-center py-16">
           <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
             <Clock className="w-8 h-8 text-gray-400" />
@@ -316,7 +466,7 @@ function BatteryCard({ batteryData }) {
         <div className="space-y-3">
           <div className="flex justify-between items-center py-2 border-b border-gray-100">
             <span className="text-xs text-gray-500 uppercase">温度</span>
-            <span className="font-semibold text-gray-800">{temp}°C</span>
+            <span className="font-semibold text-gray-800">{(parseInt(temp) / 10).toFixed(1)}°C</span>
           </div>
           <div className="flex justify-between items-center py-2">
             <span className="text-xs text-gray-500 uppercase">健康状态</span>

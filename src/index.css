@@ -64,9 +64,16 @@ body {
 
 /* 6. 缩放入场动画 */
 .zoom-in-95 { animation-name: zoomIn95; }
-@keyframes zoomIn95 { 
-    from { opacity: 0; transform: scale(0.95); } 
-    to { opacity: 1; transform: scale(1); } 
+@keyframes zoomIn95 {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* 7. 不确定进度条动画 (Indeterminate Progress Bar) */
+@keyframes indeterminate {
+    0% { transform: translateX(-100%); }
+    50% { transform: translateX(150%); }
+    100% { transform: translateX(-100%); }
 }
 
 /* 自定义滚动条工具类，给特定容器使用 */

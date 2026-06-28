@@ -3,13 +3,23 @@
  * 显示下载链接、配对指引和常见问题
  */
 import { useState } from 'react';
-import { Download, AlertCircle, ExternalLink } from 'lucide-react';
+import { Download, AlertCircle, ExternalLink, Copy, Check } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const LocalAgentGuide = ({ onTokenSubmit }) => {
   const { theme } = useTheme();
   const [tokenInput, setTokenInput] = useState('');
   const [showGuide, setShowGuide] = useState(false);
+  const [copiedCmd, setCopiedCmd] = useState(false);
+
+  const QUICK_SETUP_CMD = 'cd $env:USERPROFILE; Invoke-WebRequest -Uri "https://github.com/ShiinaMayuri123/online_toolbox_vite/archive/refs/heads/main.zip" -OutFile "toolbox.zip"; Expand-Archive -Path "toolbox.zip" -DestinationPath "." -Force; cd "online_toolbox_vite-main\\local-agent"; npm install; node index.js';
+
+  const handleCopyCmd = () => {
+    navigator.clipboard.writeText(QUICK_SETUP_CMD).then(() => {
+      setCopiedCmd(true);
+      setTimeout(() => setCopiedCmd(false), 2000);
+    });
+  };
 
   const handlePair = () => {
     if (tokenInput.trim()) {
@@ -34,19 +44,38 @@ const LocalAgentGuide = ({ onTokenSubmit }) => {
       <div className="space-y-3 mb-4">
         <div className="flex items-start gap-3">
           <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center font-bold">1</span>
-          <div>
-            <p className="text-sm font-medium text-slate-700">下载并运行本地代理</p>
-            <a
-              href="/download-agent.html"
-              target="_blank"
-              className="inline-flex items-center gap-1.5 mt-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
-            >
-              <Download size={16} />
-              下载 adb-agent.exe
-            </a>
-            <p className="text-xs text-slate-400 mt-2">
-              点击按钮查看下载方式（支持从 GitHub 下载或自行打包）
-            </p>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-slate-700">确保已安装 Node.js，然后在 PowerShell 中执行：</p>
+            <div className="mt-2 relative">
+              <div className="bg-slate-900 text-green-400 text-xs font-mono p-3 rounded-lg overflow-x-auto break-all whitespace-pre-wrap leading-relaxed">
+                {QUICK_SETUP_CMD}
+              </div>
+              <button
+                onClick={handleCopyCmd}
+                className="absolute top-2 right-2 p-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
+                title="复制命令"
+              >
+                {copiedCmd ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+              </button>
+            </div>
+            <div className="flex gap-2 mt-2">
+              <a
+                href="https://nodejs.org/"
+                target="_blank"
+                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+              >
+                <ExternalLink size={12} />
+                下载 Node.js
+              </a>
+              <a
+                href="/download-agent.html"
+                target="_blank"
+                className="inline-flex items-center gap-1 text-xs text-slate-500 hover:underline"
+              >
+                <ExternalLink size={12} />
+                其他安装方式
+              </a>
+            </div>
           </div>
         </div>
 

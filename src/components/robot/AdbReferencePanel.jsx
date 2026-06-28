@@ -71,11 +71,11 @@ const CollapsibleBlock = ({ title, icon: Icon, iconColor, count, isOpen, onToggl
   </div>
 );
 
-const AdbReferencePanel = () => {
+const AdbReferencePanel = ({ defaultOpen = false }) => {
   const { theme } = useTheme();
   const { copiedKey, copy } = useClipboard();
 
-  const [showPanel, setShowPanel] = useState(false);
+  const [showPanel, setShowPanel] = useState(defaultOpen);
   const [adbSearch, setAdbSearch] = useState('');
   const [activeSection, setActiveSection] = useState('all');
   const [showTestSummary, setShowTestSummary] = useState(false);
