@@ -4,7 +4,7 @@ import {
   HardDrive, Settings, Stethoscope, ChevronDown, ChevronRight,
   Play, Square, Trash2, Download, Terminal, X, Search, Copy, Check,
   AlertTriangle, Shield, RefreshCw, Cpu, Battery, Link, Unlink,
-  CheckCircle, BookOpen,
+  CheckCircle, BookOpen, Zap,
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { ADB_SECTIONS, TROUBLESHOOTING_FLOWS, LOG_FILTER_KEYWORDS } from '../../config/adbData';
@@ -86,6 +86,10 @@ const AdbConsole = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [autoScroll] = useState(true);
   const [showQuickStart, setShowQuickStart] = useState(false);
+
+  // 一键扫描设备信息状态
+  const [deviceInfoScanning, setDeviceInfoScanning] = useState(false);
+  const [deviceInfoResult, setDeviceInfoResult] = useState(null);
 
   // 添加输出
   const addOutput = (type, data) => {
@@ -239,6 +243,36 @@ const AdbConsole = () => {
       }
     } catch (e) {
       addOutput('error', `请求失败: ${e.message}`);
+    }
+  };
+
+  // 一键扫描设备信息（调用批量 API）
+  const handleDeviceInfoScan = async () => {
+    if (!agentBaseUrl) {
+      addOutput('error', '未连接到本地代理，请先配对');
+      return;
+    }
+
+    setDeviceInfoScanning(true);
+    setDeviceInfoResult(null);
+    addOutput('command', '$ 一键扫描设备信息 (15条命令并发)');
+
+    try {
+      const res = await fetch(`${agentBaseUrl}/adb/device-info/scan`, {
+        method: 'POST',
+        headers: getHeaders(),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDeviceInfoResult(data.data);
+        addOutput('stdout', '✓ 设备信息扫描完成');
+      } else {
+        addOutput('error', data.error || '扫描失败');
+      }
+    } catch (e) {
+      addOutput('error', `扫描失败: ${e.message}`);
+    } finally {
+      setDeviceInfoScanning(false);
     }
   };
 
@@ -522,6 +556,101 @@ const AdbConsole = () => {
                     </div>
                   );
                 })}
+              </div>
+            ) : activeModule === 'device-info' ? (
+              // 设备信息模块：一键扫描 + 单条命令
+              <div className="space-y-4">
+                {/* 一键扫描按钮 */}
+                <button
+                  onClick={handleDeviceInfoScan}
+                  disabled={deviceInfoScanning}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold text-sm text-white transition-all ${
+                    deviceInfoScanning
+                      ? 'bg-slate-400 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:shadow-lg hover:-translate-y-0.5'
+                  }`}
+                >
+                  {deviceInfoScanning ? (
+                    <RefreshCw size={16} className="animate-spin" />
+                  ) : (
+                    <Zap size={16} />
+                  )}
+                  {deviceInfoScanning ? '扫描中...' : '一键扫描设备信息（15条命令）'}
+                </button>
+
+                {/* 扫描结果 */}
+                {deviceInfoResult && (
+                  <div className="bg-white rounded-lg border border-blue-200 p-4 space-y-3">
+                    <h4 className="text-sm font-bold text-blue-700 flex items-center gap-2">
+                      <CheckCircle size={14} />
+                      扫描结果
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      {[
+                        { label: 'Android 版本', key: 'android_version' },
+                        { label: '设备型号', key: 'device_model' },
+                        { label: '设备品牌', key: 'device_name' },
+                        { label: '序列号', key: 'serial_number' },
+                        { label: '屏幕分辨率', key: 'screen_resolution' },
+                        { label: '屏幕密度', key: 'screen_density' },
+                        { label: '设备时间', key: 'device_time' },
+                        { label: '运行时长', key: 'uptime' },
+                      ].map(({ label, key }) => (
+                        <div key={key} className="flex justify-between gap-2 py-1.5 border-b border-slate-100">
+                          <span className="text-slate-500 shrink-0">{label}</span>
+                          <span className="font-mono text-slate-700 text-right truncate">
+                            {deviceInfoResult[key]?.value || '-'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    {/* 电池信息 */}
+                    {deviceInfoResult.battery_status?.value && (
+                      <div className="flex items-center gap-3 p-2 bg-green-50 rounded-lg">
+                        <Battery size={16} className="text-green-600" />
+                        <span className="text-xs font-bold text-green-700">
+                          电量 {deviceInfoResult.battery_status.value.level}%
+                          · 温度 {(deviceInfoResult.battery_status.value.temperature)}°C
+                          · {deviceInfoResult.battery_status.value.status}
+                        </span>
+                      </div>
+                    )}
+                    {/* 导出按钮 */}
+                    <button
+                      onClick={() => {
+                        const json = JSON.stringify(deviceInfoResult, null, 2);
+                        const blob = new Blob([json], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `device-info-${new Date().toISOString().slice(0, 10)}.json`;
+                        a.click();
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
+                    >
+                      <Download size={12} />
+                      导出 JSON
+                    </button>
+                  </div>
+                )}
+
+                {/* 单条命令按钮 */}
+                <div>
+                  <p className="text-xs text-slate-400 mb-2">或单独执行：</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {moduleCommands.map((cmd, i) => (
+                      <button
+                        key={i}
+                        onClick={() => executeHttp(cmd.cmd)}
+                        disabled={isRunning}
+                        className="px-3 py-2.5 text-left text-xs font-mono text-slate-600 hover:bg-white rounded-lg border border-slate-200 transition-colors disabled:opacity-50 truncate"
+                        title={cmd.desc}
+                      >
+                        {cmd.cmd.replace('adb ', '')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : (
               // 普通命令按钮
