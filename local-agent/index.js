@@ -293,21 +293,76 @@ function parseBattery(stdout) {
 
 /**
  * 解析 df -h 输出为磁盘使用数组
+ * Android 的 df -h 输出格式可能与标准 Linux 不同，需要兼容处理
  * @param {string} stdout - 原始输出
- * @returns {Array<{filesystem: string, size: string, used: string, available: string, usage: string}>}
+ * @returns {Array<{filesystem: string, total: string, used: string, available: string, usage: string}>}
  */
 function parseDiskUsage(stdout) {
   const lines = stdout.split('\n').filter(line => line.trim() && !line.startsWith('Filesystem'));
-  return lines.map(line => {
-    const parts = line.split(/\s+/);
-    return {
-      filesystem: parts[0] || '',
-      size: parts[1] || '',
-      used: parts[2] || '',
-      available: parts[3] || '',
-      usage: parts[4] || '',
-    };
-  });
+  return lines
+    .map(line => {
+      const parts = line.split(/\s+/).filter(Boolean);
+      if (parts.length >= 5) {
+        return {
+          filesystem: parts[0],
+          total: parts[1],
+          used: parts[2],
+          available: parts[3],
+          usage: parts[4],
+        };
+      }
+      return null;
+    })
+    .filter(Boolean);
+}
+
+/**
+ * 解析 /proc/cpuinfo 为摘要信息
+ * @param {string} stdout - 原始输出
+ * @returns {string}
+ */
+function parseCpuInfo(stdout) {
+  const blocks = stdout.split('\n\n').filter(b => b.trim());
+  const cores = blocks.length;
+  const first = blocks[0] || '';
+  const get = (key) => {
+    const m = first.match(new RegExp(key + '\\s*:\\s*(.+)'));
+    return m ? m[1].trim() : '';
+  };
+  return [
+    `${cores} 核心`,
+    `架构: ${get('CPU architecture') || get('model name') || '未知'}`,
+    `型号: ${get('CPU part') || get('model name') || '未知'}`,
+    `主频: ${get('BogoMIPS') || get('cpu MHz') || '?'} BogoMIPS`,
+    `特性: ${get('Features') || '无'}`,
+  ].join('\n');
+}
+
+/**
+ * 解析 /proc/meminfo 为摘要信息
+ * @param {string} stdout - 原始输出
+ * @returns {string}
+ */
+function parseMemInfo(stdout) {
+  const get = (key) => {
+    const m = stdout.match(new RegExp(key + ':\\s+(\\d+)'));
+    return m ? parseInt(m[1], 10) : 0;
+  };
+  const fmt = (kb) => {
+    if (kb >= 1048576) return `${(kb / 1048576).toFixed(1)} GB`;
+    if (kb >= 1024) return `${(kb / 1024).toFixed(0)} MB`;
+    return `${kb} kB`;
+  };
+  const total = get('MemTotal');
+  const free = get('MemFree');
+  const available = get('MemAvailable');
+  const cached = get('Cached');
+  return [
+    `总计: ${fmt(total)}`,
+    `可用: ${fmt(available || free)}`,
+    `空闲: ${fmt(free)}`,
+    `缓存: ${fmt(cached)}`,
+  ].join('\n');
 }
 
 // 扫描设备完整信息（并发执行 15 条 ADB 命令）
@@ -349,6 +404,10 @@ app.post('/adb/device-info/scan', checkAuth, async (req, res) => {
         data[cmd.key] = { value: parseBattery(stdout), error: null };
       } else if (cmd.key === 'disk_usage') {
         data[cmd.key] = { value: parseDiskUsage(stdout), error: null };
+      } else if (cmd.key === 'cpu_info') {
+        data[cmd.key] = { value: parseCpuInfo(stdout), error: null };
+      } else if (cmd.key === 'memory_info') {
+        data[cmd.key] = { value: parseMemInfo(stdout), error: null };
       } else if (cmd.key === 'screen_resolution') {
         // "Physical size: 1024x600" → "1024x600"
         const match = stdout.match(/(\d+x\d+)/);

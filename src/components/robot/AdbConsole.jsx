@@ -613,28 +613,38 @@ const AdbConsole = () => {
                         {deviceInfoResult.cpu_info?.value && (
                           <div>
                             <p className="font-bold text-slate-600 mb-1">CPU 信息</p>
-                            <pre className="bg-slate-50 p-2 rounded text-[10px] overflow-x-auto max-h-32 whitespace-pre-wrap">
-                              {deviceInfoResult.cpu_info.value.split('\n').filter(l => l.trim()).slice(0, 8).join('\n')}
-                            </pre>
+                            <div className="bg-slate-50 p-2 rounded text-[11px] space-y-0.5">
+                              {String(deviceInfoResult.cpu_info.value).split('\n').filter(l => l.trim()).map((line, i) => (
+                                <div key={i} className="flex justify-between gap-2">
+                                  <span className="text-slate-500">{line.split(':')[0]}</span>
+                                  <span className="font-mono text-slate-700">{line.split(':').slice(1).join(':')}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
                         {deviceInfoResult.memory_info?.value && (
                           <div>
                             <p className="font-bold text-slate-600 mb-1">内存信息</p>
-                            <pre className="bg-slate-50 p-2 rounded text-[10px] overflow-x-auto max-h-32 whitespace-pre-wrap">
-                              {deviceInfoResult.memory_info.value.split('\n').filter(l => l.trim()).slice(0, 6).join('\n')}
-                            </pre>
+                            <div className="bg-slate-50 p-2 rounded text-[11px] space-y-0.5">
+                              {String(deviceInfoResult.memory_info.value).split('\n').filter(l => l.trim()).map((line, i) => (
+                                <div key={i} className="flex justify-between gap-2">
+                                  <span className="text-slate-500">{line.split(':')[0]}</span>
+                                  <span className="font-mono text-slate-700">{line.split(':').slice(1).join(':')}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
-                        {deviceInfoResult.disk_usage?.value && Array.isArray(deviceInfoResult.disk_usage.value) && (
+                        {deviceInfoResult.disk_usage?.value && Array.isArray(deviceInfoResult.disk_usage.value) && deviceInfoResult.disk_usage.value.length > 0 && (
                           <div>
                             <p className="font-bold text-slate-600 mb-1">磁盘使用</p>
                             <div className="space-y-1">
                               {deviceInfoResult.disk_usage.value.map((disk, i) => (
-                                <div key={i} className="flex justify-between gap-2 bg-slate-50 p-1.5 rounded">
-                                  <span className="font-mono text-slate-600">{disk.filesystem}</span>
-                                  <span className="text-slate-500">{disk.used}/{disk.size}</span>
-                                  <span className="font-bold text-slate-700">{disk.usage}</span>
+                                <div key={i} className="flex items-center gap-2 bg-slate-50 p-1.5 rounded text-[11px]">
+                                  <span className="font-mono text-slate-600 truncate flex-1" title={disk.filesystem}>{disk.filesystem}</span>
+                                  <span className="text-slate-500 shrink-0">{disk.used}/{disk.total}</span>
+                                  <span className={`font-bold shrink-0 ${parseInt(disk.usage) > 80 ? 'text-red-600' : 'text-slate-700'}`}>{disk.usage}</span>
                                 </div>
                               ))}
                             </div>
