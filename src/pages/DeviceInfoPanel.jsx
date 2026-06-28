@@ -47,6 +47,7 @@ export default function DeviceInfoPanel() {
   const [agentDetecting, setAgentDetecting] = useState(true);
   const [agentToken, setAgentToken] = useState(localStorage.getItem('adb_local_agent_token') || '');
   const [showToken, setShowToken] = useState(false);
+  const [pairSuccess, setPairSuccess] = useState(false);
 
   // 组件挂载时自动检测本地代理
   useEffect(() => {
@@ -71,6 +72,10 @@ export default function DeviceInfoPanel() {
   const handleTokenSubmit = (token) => {
     setAgentToken(token);
     localStorage.setItem('adb_local_agent_token', token);
+    setError('');
+    // 显示配对成功提示，3 秒后自动消失
+    setPairSuccess(true);
+    setTimeout(() => setPairSuccess(false), 3000);
   };
 
   const handleScan = async () => {
@@ -217,6 +222,12 @@ export default function DeviceInfoPanel() {
                 配对
               </button>
             </div>
+            {pairSuccess && (
+              <p className="text-xs text-emerald-600 font-medium mt-2 flex items-center gap-1">
+                <CheckCircle size={12} />
+                Token 已保存！现在可以点击下方"一键扫描"获取设备信息。
+              </p>
+            )}
           </div>
         )}
       </div>
