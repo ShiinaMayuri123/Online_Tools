@@ -9,6 +9,7 @@ import RobotDeviceDetail from './pages/RobotDeviceDetail';
 import BaseConverter from './pages/BaseConverter';
 import IpLookup from './pages/IpLookup';
 import AdbTool from './pages/AdbTool';
+import DeviceInfoPanel from './pages/DeviceInfoPanel';
 import Login from './pages/Login';
 import Admin from './pages/Admin';
 import LoadingSpinner from './components/common/LoadingSpinner';
@@ -64,6 +65,7 @@ function App() {
             <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
             {/* 公开工具 */}
             <Route path="/adb" element={<AdbTool />} />
+            <Route path="/device-info" element={<DeviceInfoPanel />} />
             <Route path="/stitcher" element={<StitcherTool />} />
             <Route path="/password" element={<PasswordGenTool />} />
             <Route path="/base-converter" element={<BaseConverter />} />
