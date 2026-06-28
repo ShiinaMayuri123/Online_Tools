@@ -349,6 +349,53 @@ app.post('/adb/device-info/scan', checkAuth, async (req, res) => {
         data[cmd.key] = { value: parseBattery(stdout), error: null };
       } else if (cmd.key === 'disk_usage') {
         data[cmd.key] = { value: parseDiskUsage(stdout), error: null };
+      } else if (cmd.key === 'screen_resolution') {
+        // "Physical size: 1024x600" → "1024x600"
+        const match = stdout.match(/(\d+x\d+)/);
+        data[cmd.key] = { value: match ? match[1] : stdout, error: null };
+      } else if (cmd.key === 'screen_density') {
+        // "Physical density: 160" → "160dpi"
+        const match = stdout.match(/(\d+)/);
+        data[cmd.key] = { value: match ? `${match[1]}dpi` : stdout, error: null };
+      } else if (cmd.key === 'device_time') {
+        // "Fri Jan 18 17:05:19 CST 2013" → "2013-01-18 17:05:19"
+        try {
+          const d = new Date(stdout);
+          if (!isNaN(d.getTime())) {
+            const pad = (n) => String(n).padStart(2, '0');
+            data[cmd.key] = { value: `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`, error: null };
+          } else {
+            data[cmd.key] = { value: stdout, error: null };
+          }
+        } catch {
+          data[cmd.key] = { value: stdout, error: null };
+        }
+      } else if (cmd.key === 'uptime') {
+        // "17:05:19 up 15 min, 0 users, load average: 4.22, 4.56, 3.21" → "15 分钟"
+        const match = stdout.match(/up\s+(.+?),\s+\d+\s+user/);
+        if (match) {
+          let up = match[1].trim();
+          // 翻译常见英文
+          up = up.replace(/(\d+)\s+min/, '$1 分钟');
+          up = up.replace(/(\d+)\s+hours?/, '$1 小时');
+          up = up.replace(/(\d+)\s+days?/, '$1 天');
+          data[cmd.key] = { value: up, error: null };
+        } else {
+          data[cmd.key] = { value: stdout, error: null };
+        }
+      } else if (cmd.key === 'ip_address') {
+        // 从 ip addr 中提取所有非 lo 接口的 IP 地址
+        const ips = [];
+        let currentIface = '';
+        for (const line of stdout.split('\n')) {
+          const ifaceMatch = line.match(/^\d+:\s+(\S+?):/);
+          if (ifaceMatch) currentIface = ifaceMatch[1];
+          const inetMatch = line.match(/inet\s+(\d+\.\d+\.\d+\.\d+)/);
+          if (inetMatch && currentIface !== 'lo') {
+            ips.push(`${currentIface}: ${inetMatch[1]}`);
+          }
+        }
+        data[cmd.key] = { value: ips.length > 0 ? ips.join('\n') : stdout, error: null };
       } else {
         data[cmd.key] = { value: stdout, error: null };
       }
