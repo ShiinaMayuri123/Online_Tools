@@ -1,4 +1,4 @@
-import { AlignVerticalSpaceAround, HardDrive, Package, Hash, Globe, Sparkles, Terminal, Smartphone } from 'lucide-react';
+import { AlignVerticalSpaceAround, HardDrive, Package, Hash, Globe, Sparkles, Terminal } from 'lucide-react';
 
 /**
  * THEMES (主题配置)
@@ -90,15 +90,6 @@ export const TOOLS = [
     title: 'ADB 调试助手',
     description: '局域网 Android 设备调试工具。支持 WiFi/USB 连接，实时命令执行，设备信息查看，日志抓取等功能。',
     icon: Terminal,
-    isPopular: false,
-    isNew: true
-  },
-  {
-    id: 'device-info',
-    path: '/device-info',
-    title: '设备信息快速扫描',
-    description: '一键获取 Android 设备全部基本信息，包括系统版本、硬件配置、电池状态、磁盘使用、网络信息等。',
-    icon: Smartphone,
     isPopular: false,
     isNew: true
   },
