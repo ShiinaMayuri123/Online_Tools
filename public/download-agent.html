@@ -236,13 +236,13 @@
       </div>
     </div>
 
-    <!-- 方式一：一键安装脚本（推荐） -->
+    <!-- 方式一：一键安装（推荐） -->
     <div class="section section-1">
       <div class="section-header">
         <div class="section-icon">⚡</div>
         <div>
           <h3>方式一：一键安装（推荐）</h3>
-          <p>下载安装脚本，双击运行即可自动完成所有步骤</p>
+          <p>复制命令到 PowerShell 执行，自动完成所有步骤</p>
         </div>
       </div>
       <div class="steps">
@@ -252,28 +252,33 @@
         </div>
         <div class="step">
           <span class="step-num">2</span>
-          <span>点击下方按钮下载 <code class="code">install-agent.bat</code></span>
+          <span>按 <code class="code">Win + X</code>，选择 <strong>Windows PowerShell</strong></span>
         </div>
         <div class="step">
           <span class="step-num">3</span>
-          <span>双击运行，等待安装完成（自动下载、安装依赖、启动）</span>
-        </div>
-        <div class="step">
-          <span class="step-num">4</span>
-          <span>启动后复制显示的 Token，回到网页配对</span>
+          <span>复制下方命令，粘贴到 PowerShell 中回车执行</span>
         </div>
       </div>
-      <div class="btn-group">
-        <a href="/install-agent.bat" download="install-agent.bat" class="btn btn-primary" style="font-size: 18px; padding: 16px 32px;">
-          📥 下载安装脚本
-        </a>
-        <a href="https://nodejs.org/" target="_blank" class="btn btn-success">
-          📥 安装 Node.js
-        </a>
+      <div style="position: relative; margin-top: 12px;">
+        <div id="setup-cmd" style="background: #1a1a2e; color: #a0e0a0; padding: 16px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 14px; word-break: break-all;">irm https://raw.githubusercontent.com/ShiinaMayuri123/Online_Tools/main/local-agent/setup.ps1 | iex</div>
+        <button onclick="copyCmd()" style="position: absolute; top: 8px; right: 8px; background: #333; color: #aaa; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;" id="copy-btn">Copy</button>
       </div>
-      <p style="margin-top: 12px; font-size: 13px; color: #888;">
-        💡 安装完成后，以后每次使用只需双击 <code class="code">start.bat</code> 即可启动。
+      <script>
+        function copyCmd() {
+          navigator.clipboard.writeText('irm https://raw.githubusercontent.com/ShiinaMayuri123/Online_Tools/main/local-agent/setup.ps1 | iex').then(() => {
+            document.getElementById('copy-btn').textContent = 'Copied!';
+            setTimeout(() => document.getElementById('copy-btn').textContent = 'Copy', 2000);
+          });
+        }
+      </script>
+      <p style="margin-top: 8px; font-size: 13px; color: #888;">
+        💡 This downloads the agent, installs dependencies, and starts it. Next time, double-click <code class="code">start.bat</code>.
       </p>
+      <div class="btn-group">
+        <a href="https://nodejs.org/" target="_blank" class="btn btn-success">
+          📥 Install Node.js
+        </a>
+      </div>
     </div>
 
     <!-- 方式二：手动下载 -->

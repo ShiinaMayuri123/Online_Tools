@@ -3,13 +3,23 @@
  * 显示下载链接、配对指引和常见问题
  */
 import { useState } from 'react';
-import { Download, AlertCircle, ExternalLink } from 'lucide-react';
+import { Download, AlertCircle, ExternalLink, Copy, Check } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const LocalAgentGuide = ({ onTokenSubmit }) => {
   const { theme } = useTheme();
   const [tokenInput, setTokenInput] = useState('');
   const [showGuide, setShowGuide] = useState(false);
+  const [copiedCmd, setCopiedCmd] = useState(false);
+
+  const SETUP_CMD = "irm https://raw.githubusercontent.com/ShiinaMayuri123/Online_Tools/main/local-agent/setup.ps1 | iex";
+
+  const handleCopyCmd = () => {
+    navigator.clipboard.writeText(SETUP_CMD).then(() => {
+      setCopiedCmd(true);
+      setTimeout(() => setCopiedCmd(false), 3000);
+    });
+  };
 
   const handlePair = () => {
     if (tokenInput.trim()) {
@@ -35,28 +45,29 @@ const LocalAgentGuide = ({ onTokenSubmit }) => {
         <div className="flex items-start gap-3">
           <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center font-bold">1</span>
           <div className="flex-1">
-            <p className="text-sm font-medium text-slate-700">下载安装脚本，双击运行</p>
+            <p className="text-sm font-medium text-slate-700">确保已安装 Node.js，然后在 PowerShell 中执行：</p>
+            <div className="mt-2 relative">
+              <div className="bg-slate-900 text-green-400 text-xs font-mono p-3 pr-12 rounded-lg break-all">
+                {SETUP_CMD}
+              </div>
+              <button
+                onClick={handleCopyCmd}
+                className="absolute top-2 right-2 p-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
+                title="Copy"
+              >
+                {copiedCmd ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+              </button>
+            </div>
+            {copiedCmd && (
+              <p className="text-xs text-emerald-600 font-medium mt-1 flex items-center gap-1">
+                <Check size={12} /> Copied! Paste in PowerShell and press Enter.
+              </p>
+            )}
             <div className="flex gap-2 mt-2">
-              <a
-                href="/install-agent.bat"
-                download="install-agent.bat"
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
-              >
-                <Download size={16} />
-                下载安装脚本
-              </a>
-              <a
-                href="https://nodejs.org/"
-                target="_blank"
-                className="inline-flex items-center gap-1 px-3 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
-              >
-                <ExternalLink size={12} />
-                需先装 Node.js
+              <a href="https://nodejs.org/" target="_blank" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                <ExternalLink size={12} /> Install Node.js
               </a>
             </div>
-            <p className="text-xs text-slate-400 mt-1.5">
-              自动下载、安装依赖、启动。以后双击 <code className="bg-slate-100 px-1 rounded">start.bat</code> 即可。
-            </p>
           </div>
         </div>
 
