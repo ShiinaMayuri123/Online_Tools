@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===== users 集合 =====
+    // 只允许用户读写自己的文档
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    // ===== testRecords 集合 =====
+    // 只允许已认证用户读写（机器人测试记录管理工具）
+    match /testRecords/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // ===== 其他集合 =====
+    // 默认拒绝所有访问
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
