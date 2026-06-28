@@ -236,13 +236,13 @@
       </div>
     </div>
 
-    <!-- 方式一：一键下载运行（推荐） -->
+    <!-- 方式一：一键安装脚本（推荐） -->
     <div class="section section-1">
       <div class="section-header">
         <div class="section-icon">⚡</div>
         <div>
-          <h3>方式一：一键下载并运行（推荐）</h3>
-          <p>只需安装 Node.js，复制下方命令到 PowerShell 执行即可</p>
+          <h3>方式一：一键安装（推荐）</h3>
+          <p>下载安装脚本，双击运行即可自动完成所有步骤</p>
         </div>
       </div>
       <div class="steps">
@@ -252,25 +252,28 @@
         </div>
         <div class="step">
           <span class="step-num">2</span>
-          <span>按 <code class="code">Win + X</code>，选择 <strong>Windows PowerShell</strong></span>
+          <span>点击下方按钮下载 <code class="code">install-agent.bat</code></span>
         </div>
         <div class="step">
           <span class="step-num">3</span>
-          <span>复制粘贴以下命令并回车：</span>
+          <span>双击运行，等待安装完成（自动下载、安装依赖、启动）</span>
+        </div>
+        <div class="step">
+          <span class="step-num">4</span>
+          <span>启动后复制显示的 Token，回到网页配对</span>
         </div>
       </div>
-      <div style="background: #1a1a2e; color: #a0e0a0; padding: 16px; border-radius: 8px; margin-top: 12px; font-family: 'Courier New', monospace; font-size: 13px; overflow-x: auto; white-space: pre-wrap; word-break: break-all;">cd $env:USERPROFILE; Invoke-WebRequest -Uri "https://github.com/ShiinaMayuri123/Online_Tools/archive/refs/heads/main.zip" -OutFile "toolbox.zip"; Expand-Archive -Path "toolbox.zip" -DestinationPath "." -Force; cd "Online_Tools-main\local-agent"; npm install; node index.js</div>
-      <p style="margin-top: 8px; font-size: 13px; color: #888;">
-        💡 此命令会自动下载代理程序、安装依赖并启动。启动后请复制显示的 Token 回到网页配对。
-      </p>
-      <p style="margin-top: 4px; font-size: 13px; color: #c00;">
-        ⚠️ 如果仓库是私有的，需要先登录 GitHub 或使用 <code class="code">git clone</code> 方式。
-      </p>
       <div class="btn-group">
+        <a href="/install-agent.bat" download="install-agent.bat" class="btn btn-primary" style="font-size: 18px; padding: 16px 32px;">
+          📥 下载安装脚本
+        </a>
         <a href="https://nodejs.org/" target="_blank" class="btn btn-success">
-          📥 先安装 Node.js
+          📥 安装 Node.js
         </a>
       </div>
+      <p style="margin-top: 12px; font-size: 13px; color: #888;">
+        💡 安装完成后，以后每次使用只需双击 <code class="code">start.bat</code> 即可启动。
+      </p>
     </div>
 
     <!-- 方式二：手动下载 -->
@@ -285,25 +288,16 @@
       <div class="steps">
         <div class="step">
           <span class="step-num">1</span>
-          <span>下载仓库 ZIP：<a href="https://github.com/ShiinaMayuri123/Online_Tools/archive/refs/heads/main.zip" target="_blank">点击下载</a>，或 <code class="code">git clone</code> 克隆仓库</span>
+          <span>下载仓库 ZIP：<a href="https://github.com/ShiinaMayuri123/Online_Tools/archive/refs/heads/main.zip" target="_blank">点击下载</a></span>
         </div>
         <div class="step">
           <span class="step-num">2</span>
-          <span>解压后进入 <code class="code">local-agent</code> 文件夹</span>
+          <span>解压，进入 <code class="code">local-agent</code> 文件夹</span>
         </div>
         <div class="step">
           <span class="step-num">3</span>
-          <span>双击 <code class="code">start.bat</code>（自动安装依赖并启动）</span>
+          <span>双击 <code class="code">start.bat</code></span>
         </div>
-        <div class="step">
-          <span class="step-num">4</span>
-          <span>如果 <code class="code">start.bat</code> 不可用，打开终端手动执行：<code class="code">npm install</code> 然后 <code class="code">npm start</code></span>
-        </div>
-      </div>
-      <div class="btn-group">
-        <a href="https://github.com/ShiinaMayuri123/Online_Tools" target="_blank" class="btn btn-primary">
-          🚀 访问 GitHub 仓库
-        </a>
       </div>
     </div>
 
