@@ -102,6 +102,42 @@ app.post('/api/adb/exec', authenticate, async (req, res) => {
   }
 });
 
+// 安全命令路由：基于 commandId 和 params 构建防止注入的 ADB 命令 - 需要认证
+app.post('/api/adb/exec-safe', authenticate, async (req, res) => {
+  const { commandId, params = {}, rawCommand } = req.body;
+
+  let targetCommand = rawCommand;
+
+  // 严格安全参数防注入转义检查（如果包含了危险符号如 &&, ||, ;, `, $(等尝试进行 Shell 注入）
+  const dangerousCharsRegex = /[;&|`$]/;
+  
+  if (params && typeof params === 'object') {
+    for (const [key, val] of Object.entries(params)) {
+      if (typeof val === 'string' && dangerousCharsRegex.test(val)) {
+        return res.status(403).json({
+          error: `检测到非法参数字符 (注入风险): key=[${key}], val=[${val}]`
+        });
+      }
+    }
+  }
+
+  if (!targetCommand) {
+    return res.status(400).json({ error: '无法生成或解析目标 ADB 命令' });
+  }
+
+  // 校验安全规则
+  if (!isCommandSafe(targetCommand)) {
+    return res.status(403).json({ error: `命令 [${targetCommand}] 不在白名单或触发风险拦截` });
+  }
+
+  try {
+    const { stdout, stderr } = await execAsync(targetCommand, { timeout: 60000 });
+    res.json({ success: true, stdout, stderr, commandId });
+  } catch (error) {
+    res.json({ success: false, error: error.message, stderr: error.stderr });
+  }
+});
+
 // 获取已连接设备列表 - 需要认证
 app.get('/api/adb/devices', authenticate, async (req, res) => {
   try {

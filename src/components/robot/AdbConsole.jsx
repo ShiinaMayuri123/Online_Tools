@@ -1,23 +1,21 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Wifi, WifiOff, Monitor, Package, FileText, Folder, Network,
-  HardDrive, Settings, Stethoscope, ChevronDown, ChevronRight,
-  Play, Square, Trash2, Download, Terminal, X, Search, Copy, Check,
-  AlertTriangle, Shield, RefreshCw, Cpu, Battery, Link, Unlink,
-  CheckCircle, BookOpen, Zap,
+  HardDrive, Settings, Stethoscope, ChevronDown, Play, Square,
+  Trash2, Download, Terminal, Search, RefreshCw, Cpu, Battery,
+  Link as LinkIcon, Unlink, Activity, ShieldAlert, Layers
 } from 'lucide-react';
+
 import { useTheme } from '../../contexts/ThemeContext';
-import { ADB_SECTIONS, TROUBLESHOOTING_FLOWS, LOG_FILTER_KEYWORDS } from '../../config/adbData';
-import LocalAgentGuide from './LocalAgentGuide';
+import { ADB_COMMANDS, COMMAND_CATEGORIES } from '../../config/adbCommands';
+import AdbCommandCard from './AdbCommandCard';
+import ExecutionHistory from './ExecutionHistory';
+import RobotHealthDiagnostic from './RobotHealthDiagnostic';
 
-// ============ 本地代理配置 ============
-
-// 候选端口列表（避免使用 5037，那是 adb server 默认端口）
-const AGENT_PORTS = [5038, 5039, 5040, 12553, 12554];
+const AGENT_PORTS = [5038, 5039, 5040, 12553, 12554, 3001];
 
 /**
- * 检测本地代理是否运行
- * @returns {Promise<string|null>} 代理地址，未检测到返回 null
+ * 自动检测本地代理是否运行
  */
 async function detectLocalAgent() {
   for (const port of AGENT_PORTS) {
@@ -26,90 +24,78 @@ async function detectLocalAgent() {
         method: 'GET',
         cache: 'no-store',
         mode: 'cors',
-        signal: AbortSignal.timeout(1000) // 1 秒超时
+        signal: AbortSignal.timeout(1000)
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.ok) {
-          return `http://127.0.0.1:${port}`;
-        }
+        if (data.ok) return `http://127.0.0.1:${port}`;
       }
     } catch {
-      // 继续尝试下一个端口
+      // 继续探查下一个端口
     }
   }
   return null;
 }
 
-/**
- * 获取 API Token
- * @returns {string}
- */
-const getApiKey = () => {
-  return localStorage.getItem('adb_local_agent_token') || '';
-};
+const getApiKey = () => localStorage.getItem('adb_local_agent_token') || '';
 
-/** 功能模块配置 */
-const MODULES = [
-  { id: 'device-info', label: '设备信息', icon: HardDrive, color: 'text-blue-600' },
-  { id: 'app-manager', label: '应用管理', icon: Package, color: 'text-purple-600' },
-  { id: 'log-viewer', label: '日志查看', icon: FileText, color: 'text-green-600' },
-  { id: 'screen-control', label: '屏幕控制', icon: Monitor, color: 'text-orange-600' },
-  { id: 'network', label: '网络诊断', icon: Network, color: 'text-cyan-600' },
-  { id: 'file-ops', label: '文件操作', icon: Folder, color: 'text-yellow-600' },
-  { id: 'system', label: '系统控制', icon: Settings, color: 'text-red-600' },
-  { id: 'troubleshoot', label: '故障排查', icon: Stethoscope, color: 'text-pink-600' },
-];
-
-const AdbConsole = () => {
+export default function AdbConsole() {
   const { theme } = useTheme();
   const outputRef = useRef(null);
   const wsRef = useRef(null);
 
-  // 本地代理状态
-  const [agentBaseUrl, setAgentBaseUrl] = useState(null); // 检测到的代理地址
-  const [agentDetecting, setAgentDetecting] = useState(true); // 检测中
-  const [agentToken, setAgentToken] = useState(getApiKey()); // Token
+  // 本地代理与安全连接
+  const [agentBaseUrl, setAgentBaseUrl] = useState(null);
+  const [agentDetecting, setAgentDetecting] = useState(true);
+  const [agentToken, setAgentToken] = useState(getApiKey());
 
-  // 连接状态
+  // 设备状态
   const [connectionInput, setConnectionInput] = useState('192.168.51.143');
   const [connectedDevice, setConnectedDevice] = useState(null);
   const [connecting, setConnecting] = useState(false);
   const [devices, setDevices] = useState([]);
   const [showConsole, setShowConsole] = useState(true);
-  const [showToken, setShowToken] = useState(false);
 
-  // 命令执行状态
-  const [activeModule, setActiveModule] = useState('device-info');
+  // 核心交互模式与搜索筛选
+  const [selectedCategory, setSelectedCategory] = useState('全部');
+  const [searchQuery, setSearchQuery] = useState('');
   const [customCommand, setCustomCommand] = useState('adb shell ');
+
+  // 控制台输出与终端状态
   const [output, setOutput] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [autoScroll] = useState(true);
-  const [showQuickStart, setShowQuickStart] = useState(false);
 
-  // 一键扫描设备信息状态
-  const [deviceInfoScanning, setDeviceInfoScanning] = useState(false);
-  const [deviceInfoResult, setDeviceInfoResult] = useState(null);
+  // 执行历史记录 (LocalStorage 持久化)
+  const [history, setHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('adb_exec_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
-  // 添加输出
+  useEffect(() => {
+    try {
+      localStorage.setItem('adb_exec_history', JSON.stringify(history));
+    } catch (e) {
+      console.error('Failed to save execution history', e);
+    }
+  }, [history]);
+
   const addOutput = (type, data) => {
-    setOutput(prev => [...prev, { type, data, time: new Date().toLocaleTimeString() }]);
+    setOutput((prev) => [...prev, { type, data, time: new Date().toLocaleTimeString() }]);
   };
 
-  // 连接 WebSocket
+  // WebSocket 实时双向流连接
   const connectWebSocket = (baseUrl, token) => {
-    if (wsRef.current) {
-      wsRef.current.close();
-    }
+    if (wsRef.current) wsRef.current.close();
 
     const wsUrl = baseUrl.replace(/^http/, 'ws') + `/ws?token=${encodeURIComponent(token)}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
-    ws.onopen = () => {
-      addOutput('system', '已连接到本地代理');
-    };
-
+    ws.onopen = () => addOutput('system', '已成功与现场 ADB 运维代理建立 WebSocket 链路');
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
@@ -127,7 +113,7 @@ const AdbConsole = () => {
           case 'close':
             setIsRunning(false);
             if (msg.code !== 0 && msg.code !== null) {
-              addOutput('error', `进程退出，代码: ${msg.code}`);
+              addOutput('error', `进程结束，退出代码: ${msg.code}`);
             }
             break;
           case 'error':
@@ -135,7 +121,7 @@ const AdbConsole = () => {
             setIsRunning(false);
             break;
           case 'killed':
-            addOutput('system', '命令已终止');
+            addOutput('system', '用户发起了终止进程指令');
             setIsRunning(false);
             break;
         }
@@ -144,39 +130,10 @@ const AdbConsole = () => {
       }
     };
 
-    ws.onerror = () => {
-      addOutput('error', 'WebSocket 连接失败，请检查本地代理是否运行');
-    };
-
-    ws.onclose = () => {
-      addOutput('system', 'WebSocket 连接已断开');
-    };
+    ws.onerror = () => addOutput('error', 'WebSocket 通信异常');
+    ws.onclose = () => addOutput('system', 'WebSocket 连接已关闭');
   };
 
-  // 处理 Token 提交（配对）
-  const handleTokenSubmit = (token) => {
-    setAgentToken(token);
-    localStorage.setItem('adb_local_agent_token', token);
-
-    if (agentBaseUrl) {
-      connectWebSocket(agentBaseUrl, token);
-      addOutput('system', 'Token 已保存，正在重新连接...');
-    }
-  };
-
-  // 刷新代理检测
-  const refreshAgentDetection = async () => {
-    setAgentDetecting(true);
-    const baseUrl = await detectLocalAgent();
-    setAgentBaseUrl(baseUrl);
-    setAgentDetecting(false);
-
-    if (baseUrl && agentToken) {
-      connectWebSocket(baseUrl, agentToken);
-    }
-  };
-
-  // 检测本地代理（组件挂载时执行一次）
   useEffect(() => {
     const detect = async () => {
       setAgentDetecting(true);
@@ -185,595 +142,440 @@ const AdbConsole = () => {
       setAgentDetecting(false);
 
       if (baseUrl) {
-        addOutput('system', `已检测到本地代理: ${baseUrl}`);
-        // 如果有 Token，自动连接 WebSocket
-        if (agentToken) {
-          connectWebSocket(baseUrl, agentToken);
-        }
+        addOutput('system', `已感知到机器代理服务运行于: ${baseUrl}`);
+        if (agentToken) connectWebSocket(baseUrl, agentToken);
       } else {
-        addOutput('system', '未检测到本地代理，请先下载并运行');
+        addOutput('system', '未发现可用的本地 ADB 代理服务');
       }
     };
     detect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 自动滚动
   useEffect(() => {
-    if (autoScroll && outputRef.current) {
+    if (outputRef.current) {
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
-  }, [output, autoScroll]);
+  }, [output]);
 
-  // 执行命令（流式）
+  const getHeaders = () => ({
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${agentToken}`,
+  });
+
+  // 1. 发送构建完成的文本命令执行 (HTTP API)
+  const executeCommand = async (commandObj, builtCmd, paramValues) => {
+    const startTime = Date.now();
+    addOutput('command', `$ ${builtCmd}`);
+    setIsRunning(true);
+
+    try {
+      // 优先发送安全路由 /api/adb/exec-safe，后置兜底普通 /api/adb/exec
+      let res = await fetch(`${agentBaseUrl || ''}/api/adb/exec-safe`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          commandId: commandObj?.id,
+          params: paramValues,
+          rawCommand: builtCmd,
+        }),
+      });
+
+      if (res.status === 404) {
+        // 如果后端尚未更新 safe 路由，降级回传统 exec 接口
+        res = await fetch(`${agentBaseUrl || ''}/api/adb/exec`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ command: builtCmd }),
+        });
+      }
+
+      const data = await res.json();
+      const duration = Date.now() - startTime;
+      setIsRunning(false);
+
+      const historyItem = {
+        id: Date.now().toString(),
+        commandId: commandObj?.id || 'custom',
+        name: commandObj?.name || '自定义命令',
+        category: commandObj?.category || '常用调试',
+        fullCmd: builtCmd,
+        timestamp: new Date().toLocaleTimeString(),
+        duration,
+        status: data.success ? 'success' : 'error',
+        output: data.stdout || data.message || '',
+        error: data.error || data.stderr || '',
+      };
+
+      setHistory((prev) => [historyItem, ...prev]);
+
+      if (data.success) {
+        if (data.stdout) addOutput('stdout', data.stdout);
+        if (data.stderr) addOutput('stderr', data.stderr);
+      } else {
+        addOutput('error', data.error || data.stderr || '命令执行失败');
+      }
+
+      return data;
+    } catch (e) {
+      const duration = Date.now() - startTime;
+      setIsRunning(false);
+      addOutput('error', `请求服务端发生致命错误: ${e.message}`);
+
+      setHistory((prev) => [
+        {
+          id: Date.now().toString(),
+          commandId: commandObj?.id || 'custom',
+          name: commandObj?.name || '自定义命令',
+          category: commandObj?.category || '常用调试',
+          fullCmd: builtCmd,
+          timestamp: new Date().toLocaleTimeString(),
+          duration,
+          status: 'error',
+          error: e.message,
+        },
+        ...prev,
+      ]);
+    }
+  };
+
+  // 2. 流式 WebSocket 执行（适合无限日志输出）
   const executeStream = (command) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      addOutput('error', 'WebSocket 未连接');
+      addOutput('error', 'WebSocket 链路未建立，无法开启实时数据流');
       return;
     }
     wsRef.current.send(JSON.stringify({ type: 'exec-stream', command }));
   };
 
-  // 构建请求头
-  const getHeaders = () => ({
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${agentToken}`
-  });
-
-  // 执行命令（HTTP）
-  const executeHttp = async (command) => {
-    if (!agentBaseUrl) {
-      addOutput('error', '未连接到本地代理，请先配对');
-      return;
-    }
-
-    addOutput('command', `$ ${command}`);
-    try {
-      const res = await fetch(`${agentBaseUrl}/adb/exec`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({ command })
-      });
-      const data = await res.json();
-      if (data.success) {
-        if (data.stdout) addOutput('stdout', data.stdout);
-        if (data.stderr) addOutput('stderr', data.stderr);
-      } else {
-        addOutput('error', data.error || data.stderr);
-      }
-    } catch (e) {
-      addOutput('error', `请求失败: ${e.message}`);
-    }
-  };
-
-  // 一键扫描设备信息（调用批量 API）
-  const handleDeviceInfoScan = async () => {
-    if (!agentBaseUrl) {
-      addOutput('error', '未连接到本地代理，请先配对');
-      return;
-    }
-
-    setDeviceInfoScanning(true);
-    setDeviceInfoResult(null);
-    addOutput('command', '$ 一键扫描设备信息 (15条命令并发)');
-
-    try {
-      const res = await fetch(`${agentBaseUrl}/adb/device-info/scan`, {
-        method: 'POST',
-        headers: getHeaders(),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setDeviceInfoResult(data.data);
-        addOutput('stdout', '✓ 设备信息扫描完成');
-      } else {
-        addOutput('error', data.error || '扫描失败');
-      }
-    } catch (e) {
-      addOutput('error', `扫描失败: ${e.message}`);
-    } finally {
-      setDeviceInfoScanning(false);
-    }
-  };
-
-  // 连接设备
+  // 设备连接控制
   const handleConnect = async () => {
     if (!connectionInput || !agentBaseUrl) return;
     setConnecting(true);
     try {
-      const res = await fetch(`${agentBaseUrl}/adb/connect`, {
+      const res = await fetch(`${agentBaseUrl}/api/adb/connect`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
           ip: connectionInput.split(':')[0],
-          port: connectionInput.split(':')[1] || 5555
-        })
+          port: connectionInput.split(':')[1] || 5555,
+        }),
       });
       const data = await res.json();
       if (data.success) {
         setConnectedDevice(data.device);
-        addOutput('system', `已连接到设备: ${data.device}`);
+        addOutput('system', `成功握手远程网络设备: ${data.device}`);
         refreshDevices();
       } else {
         addOutput('error', `连接失败: ${data.error || data.message}`);
       }
     } catch (e) {
-      addOutput('error', `连接失败: ${e.message}`);
+      addOutput('error', `网络连接失败: ${e.message}`);
     }
     setConnecting(false);
   };
 
-  // 断开连接
   const handleDisconnect = async (device) => {
     if (!agentBaseUrl) return;
     try {
-      await fetch(`${agentBaseUrl}/adb/disconnect`, {
+      await fetch(`${agentBaseUrl}/api/adb/disconnect`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ device })
+        body: JSON.stringify({ device }),
       });
       if (device === connectedDevice) setConnectedDevice(null);
-      addOutput('system', `已断开: ${device}`);
+      addOutput('system', `已断开连接: ${device}`);
       refreshDevices();
     } catch (e) {
-      addOutput('error', `断开失败: ${e.message}`);
+      addOutput('error', `断开命令失败: ${e.message}`);
     }
   };
 
-  // 刷新设备列表
   const refreshDevices = async () => {
     if (!agentBaseUrl) return;
     try {
-      const res = await fetch(`${agentBaseUrl}/adb/devices`, {
-        headers: getHeaders()
-      });
+      const res = await fetch(`${agentBaseUrl}/api/adb/devices`, { headers: getHeaders() });
       const data = await res.json();
       if (data.success) setDevices(data.devices);
     } catch (e) {
-      console.error('刷新设备失败:', e);
+      console.error('设备列表感知异常:', e);
     }
   };
 
-  // 终止当前命令
-  const killCommand = () => {
-    if (wsRef.current) {
-      wsRef.current.send(JSON.stringify({ type: 'kill' }));
-    }
-  };
+  // 模糊搜索与分类筛选过滤
+  const filteredCommands = useMemo(() => {
+    return ADB_COMMANDS.filter((cmd) => {
+      // 1. 分类筛选
+      const matchCategory = selectedCategory === '全部' || cmd.category === selectedCategory;
+      if (!matchCategory) return false;
 
-  // 清空输出
-  const clearOutput = () => setOutput([]);
+      // 2. 关键词模糊匹配
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        cmd.name.toLowerCase().includes(q) ||
+        cmd.category.toLowerCase().includes(q) ||
+        cmd.description.toLowerCase().includes(q) ||
+        cmd.id.toLowerCase().includes(q)
+      );
+    });
+  }, [selectedCategory, searchQuery]);
 
-  // 导出输出
-  const exportOutput = () => {
-    const text = output.map(o => `[${o.time}] ${o.data}`).join('\n');
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `adb-output-${new Date().toISOString().slice(0, 10)}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // 获取当前模块对应的命令
-  const moduleCommands = useMemo(() => {
-    const sectionMap = {
-      'device-info': '设备信息',
-      'app-manager': '应用管理',
-      'log-viewer': '日志与调试',
-      'screen-control': '屏幕与输入',
-      'network': '网络诊断',
-      'file-ops': '文件操作',
-      'system': '系统控制',
-    };
-
-    if (activeModule === 'troubleshoot') {
-      return TROUBLESHOOTING_FLOWS;
-    }
-
-    const section = ADB_SECTIONS.find(s => s.title === sectionMap[activeModule]);
-    return section?.commands || [];
-  }, [activeModule]);
-
-  // 输出类型样式
   const outputStyles = {
     command: 'text-blue-400 font-bold',
-    stdout: 'text-green-300',
-    stderr: 'text-yellow-300',
-    error: 'text-red-400',
+    stdout: 'text-emerald-300',
+    stderr: 'text-amber-300',
+    error: 'text-rose-400',
     system: 'text-purple-400',
   };
 
   return (
-    <div className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-slate-200 shadow-md overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* 标题栏 */}
-      <button
-        onClick={() => setShowConsole(!showConsole)}
-        className="w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
-      >
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="p-2 rounded-lg bg-emerald-100 text-emerald-600">
-            <Terminal size={18} />
+    <div className="bg-slate-950 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden animate-fadeIn">
+      {/* 运维平台 Header */}
+      <div className="px-6 py-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-blue-950/80 border border-blue-800/80 text-blue-400">
+            <Terminal className="w-5 h-5" />
           </div>
-          <span className="text-base sm:text-lg font-bold text-slate-800">ADB 控制台</span>
-          {/* 本地代理状态 */}
-          {!agentDetecting && (
-            <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-              agentBaseUrl
-                ? 'bg-blue-100 text-blue-700'
-                : 'bg-slate-100 text-slate-500'
-            }`}>
-              {agentBaseUrl ? '代理已连接' : '代理未连接'}
-            </span>
-          )}
-          {connectedDevice && (
-            <span className="px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
-              设备已连接
-            </span>
-          )}
+          <div>
+            <h1 className="text-base font-bold text-slate-100 flex items-center gap-2">
+              <span>机器人现场运维平台</span>
+              <span className="px-2 py-0.5 rounded text-[10px] bg-blue-950 text-blue-300 border border-blue-800 font-mono">
+                Robot Service Platform v2.0
+              </span>
+            </h1>
+            <p className="text-xs text-slate-400">参数化配置驱动 · 危险级别防控 · 一键健康排查</p>
+          </div>
         </div>
-        <ChevronDown
-          size={20}
-          className={`text-slate-400 transition-transform duration-200 ${showConsole ? 'rotate-180' : ''}`}
-        />
-      </button>
+
+        <div className="flex items-center gap-3">
+          {!agentDetecting && (
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 border ${
+                agentBaseUrl
+                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800'
+                  : 'bg-slate-900 text-slate-400 border-slate-800'
+              }`}
+            >
+              {agentBaseUrl ? <LinkIcon className="w-3.5 h-3.5 text-emerald-400" /> : <Unlink className="w-3.5 h-3.5" />}
+              {agentBaseUrl ? '代理服务已就绪' : '未链接本地代理'}
+            </span>
+          )}
+
+          <button
+            onClick={() => setShowConsole(!showConsole)}
+            className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
+          >
+            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showConsole ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+      </div>
 
       {showConsole && (
-        <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-4 animate-in fade-in duration-200">
-
+        <div className="p-6 space-y-6">
           {/* 设备连接区域 */}
-          <div className={`p-4 bg-slate-50 rounded-xl border border-slate-200 ${!agentBaseUrl ? 'opacity-50 pointer-events-none' : ''}`}>
-            <div className="flex items-center gap-2 mb-3">
-              {connectedDevice ? (
-                <Wifi size={18} className="text-emerald-500" />
-              ) : (
-                <WifiOff size={18} className="text-slate-400" />
-              )}
-              <span className="text-sm font-bold text-slate-700">设备连接</span>
+          <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
+                {connectedDevice ? <Wifi className="w-4 h-4 text-emerald-400" /> : <WifiOff className="w-4 h-4 text-slate-500" />}
+                <span>远程 ADB 无线连接 (TCP/IP)</span>
+              </div>
+              <button
+                onClick={refreshDevices}
+                className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>感知设备列表</span>
+              </button>
             </div>
 
-            <div className="flex gap-2 mb-3">
+            <div className="flex gap-2">
               <input
                 type="text"
                 value={connectionInput}
                 onChange={(e) => setConnectionInput(e.target.value)}
-                placeholder="输入设备 IP 地址"
-                className="flex-1 px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 text-sm font-mono"
+                placeholder="机器人 IP 地址 (如 192.168.1.100)"
+                className="flex-1 px-3 py-2 bg-slate-950 border border-slate-700/80 rounded-lg text-xs font-mono text-slate-200 focus:outline-none focus:border-blue-500"
               />
               <button
                 onClick={connectedDevice ? () => handleDisconnect(connectedDevice) : handleConnect}
-                disabled={connecting || (!connectedDevice && !connectionInput)}
-                className={`px-4 py-2.5 rounded-lg font-bold text-sm text-white transition-all ${
+                disabled={connecting}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
                   connectedDevice
-                    ? 'bg-red-500 hover:bg-red-600'
-                    : `${theme.primaryBg} ${theme.primaryHover}`
-                } disabled:opacity-50`}
+                    ? 'bg-rose-600 hover:bg-rose-500 text-white'
+                    : 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-950/40'
+                }`}
               >
-                {connecting ? '连接中...' : connectedDevice ? '断开连接' : '连接'}
+                {connecting ? '正在连接...' : connectedDevice ? '断开设备' : '建立连接'}
               </button>
             </div>
 
-            <button
-              onClick={refreshDevices}
-              className="px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1.5"
-            >
-              <RefreshCw size={14} />
-              刷新设备列表
-            </button>
-
-            {/* 已连接设备列表 */}
             {devices.length > 0 && (
-              <div className="mt-3 space-y-2">
-                <p className="text-xs text-slate-500 font-medium">已连接设备：</p>
+              <div className="flex flex-wrap gap-2 pt-1">
                 {devices.map((dev, i) => (
                   <div
                     key={i}
-                    className={`flex items-center gap-2 p-2.5 rounded-lg border ${
-                      dev.serial === connectedDevice
-                        ? 'border-emerald-300 bg-emerald-50'
-                        : 'border-slate-200 bg-white'
-                    }`}
+                    className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-xs font-mono flex items-center gap-2"
                   >
-                    <div className={`w-2 h-2 rounded-full ${dev.state === 'device' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                    <span className="font-mono text-sm text-slate-700">{dev.serial}</span>
-                    {dev.model && <span className="text-xs text-slate-500">({dev.model})</span>}
-                    {dev.serial === connectedDevice && (
-                      <span className="ml-auto text-xs font-bold text-emerald-600">当前</span>
-                    )}
+                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span className="text-slate-200">{dev.serial}</span>
+                    <span className="text-slate-500">({dev.model || dev.state})</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* 功能模块选择 */}
-          <div className={`grid grid-cols-4 sm:grid-cols-8 gap-2 ${!agentBaseUrl ? 'opacity-50 pointer-events-none' : ''}`}>
-            {MODULES.map((mod) => {
-              const Icon = mod.icon;
-              return (
-                <button
-                  key={mod.id}
-                  onClick={() => setActiveModule(mod.id)}
-                  className={`p-3 rounded-xl text-center transition-all ${
-                    activeModule === mod.id
-                      ? `${theme.primaryBg} text-white shadow-md`
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  <Icon size={18} className="mx-auto mb-1" />
-                  <span className="text-xs font-bold">{mod.label}</span>
-                </button>
-              );
-            })}
-          </div>
+          {/* 机器人一键健康诊断面板 */}
+          <RobotHealthDiagnostic
+            onRunBatchExec={(cmd) => executeCommand({ id: 'diagnostic', name: '一键诊断', category: '核心诊断' }, cmd, {})}
+          />
 
-          {/* 命令按钮区 */}
-          <div className={`bg-slate-50 rounded-xl border border-slate-200 p-4 ${!agentBaseUrl ? 'opacity-50 pointer-events-none' : ''}`}>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-sm font-bold text-slate-700">
-                {MODULES.find(m => m.id === activeModule)?.label}
-              </span>
+          {/* 搜索与分类 Tab 工具栏 */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+              {/* 搜索框 */}
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="搜索 200+ 命令（输入名称、描述或关键字如：日志/安装/文件）..."
+                  className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-blue-500 font-mono transition-colors"
+                />
+              </div>
             </div>
 
-            {activeModule === 'troubleshoot' ? (
-              // 故障排查流程
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {TROUBLESHOOTING_FLOWS.map((flow) => {
-                  const Icon = flow.icon;
-                  return (
-                    <div key={flow.id} className="border border-slate-200 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Icon size={16} className="text-orange-500" />
-                        <span className="text-sm font-bold text-slate-700">{flow.title}</span>
-                      </div>
-                      <div className="space-y-1.5">
-                        {flow.steps.map((step, i) => (
-                          <button
-                            key={i}
-                            onClick={() => executeHttp(step.cmd)}
-                            className="w-full text-left px-3 py-2 text-xs font-mono text-slate-600 hover:bg-white rounded-lg transition-colors"
-                          >
-                            {step.cmd}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : activeModule === 'device-info' ? (
-              // 设备信息模块：一键扫描 + 单条命令
-              <div className="space-y-4">
-                {/* 一键扫描按钮 */}
-                <button
-                  onClick={handleDeviceInfoScan}
-                  disabled={deviceInfoScanning}
-                  className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold text-sm text-white transition-all ${
-                    deviceInfoScanning
-                      ? 'bg-slate-400 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:shadow-lg hover:-translate-y-0.5'
-                  }`}
-                >
-                  {deviceInfoScanning ? (
-                    <RefreshCw size={16} className="animate-spin" />
-                  ) : (
-                    <Zap size={16} />
-                  )}
-                  {deviceInfoScanning ? '扫描中...' : '一键扫描设备信息（15条命令）'}
-                </button>
+            {/* 十大分类选择 Tab 轴 */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                onClick={() => setSelectedCategory('全部')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-colors ${
+                  selectedCategory === '全部'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-950/40'
+                    : 'bg-slate-900 text-slate-400 hover:bg-slate-800'
+                }`}
+              >
+                全部命令 ({ADB_COMMANDS.length})
+              </button>
 
-                {/* 扫描结果 */}
-                {deviceInfoResult && (
-                  <div className="bg-white rounded-lg border border-blue-200 p-4 space-y-3">
-                    <h4 className="text-sm font-bold text-blue-700 flex items-center gap-2">
-                      <CheckCircle size={14} />
-                      扫描结果
-                    </h4>
-                    {/* 基本信息 */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                      {[
-                        { label: 'Android 版本', key: 'android_version' },
-                        { label: '设备型号', key: 'device_model' },
-                        { label: '设备品牌', key: 'device_name' },
-                        { label: '序列号', key: 'serial_number' },
-                        { label: '屏幕分辨率', key: 'screen_resolution' },
-                        { label: '屏幕密度', key: 'screen_density' },
-                        { label: '设备时间', key: 'device_time' },
-                        { label: '运行时长', key: 'uptime' },
-                        { label: 'IP 地址', key: 'ip_address' },
-                      ].map(({ label, key }) => (
-                        <div key={key} className="flex justify-between gap-2 py-1.5 border-b border-slate-100">
-                          <span className="text-slate-500 shrink-0">{label}</span>
-                          <span className="font-mono text-slate-700 text-right truncate" title={typeof deviceInfoResult[key]?.value === 'string' ? deviceInfoResult[key].value : ''}>
-                            {typeof deviceInfoResult[key]?.value === 'string'
-                              ? deviceInfoResult[key].value.split('\n')[0]
-                              : deviceInfoResult[key]?.value || '-'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    {/* 电池信息 */}
-                    {deviceInfoResult.battery_status?.value && (
-                      <div className="flex items-center gap-3 p-2 bg-green-50 rounded-lg">
-                        <Battery size={16} className="text-green-600" />
-                        <span className="text-xs font-bold text-green-700">
-                          电量 {deviceInfoResult.battery_status.value.level}%
-                          · 温度 {deviceInfoResult.battery_status.value.temperature}°C
-                          · {deviceInfoResult.battery_status.value.status}
-                        </span>
-                      </div>
-                    )}
-                    {/* 详细信息（可展开） */}
-                    <details className="text-xs">
-                      <summary className="cursor-pointer text-slate-500 hover:text-slate-700 font-medium">
-                        查看详细信息（CPU / 内存 / 磁盘）
-                      </summary>
-                      <div className="mt-2 space-y-3">
-                        {deviceInfoResult.cpu_info?.value && (
-                          <div>
-                            <p className="font-bold text-slate-600 mb-1">CPU 信息</p>
-                            <div className="bg-slate-50 p-2 rounded text-[11px] space-y-0.5">
-                              {String(deviceInfoResult.cpu_info.value).split('\n').filter(l => l.trim()).map((line, i) => (
-                                <div key={i} className="flex justify-between gap-2">
-                                  <span className="text-slate-500">{line.split(':')[0]}</span>
-                                  <span className="font-mono text-slate-700">{line.split(':').slice(1).join(':')}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {deviceInfoResult.memory_info?.value && (
-                          <div>
-                            <p className="font-bold text-slate-600 mb-1">内存信息</p>
-                            <div className="bg-slate-50 p-2 rounded text-[11px] space-y-0.5">
-                              {String(deviceInfoResult.memory_info.value).split('\n').filter(l => l.trim()).map((line, i) => (
-                                <div key={i} className="flex justify-between gap-2">
-                                  <span className="text-slate-500">{line.split(':')[0]}</span>
-                                  <span className="font-mono text-slate-700">{line.split(':').slice(1).join(':')}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {deviceInfoResult.disk_usage?.value && Array.isArray(deviceInfoResult.disk_usage.value) && deviceInfoResult.disk_usage.value.length > 0 && (
-                          <div>
-                            <p className="font-bold text-slate-600 mb-1">磁盘使用</p>
-                            <div className="space-y-1">
-                              {deviceInfoResult.disk_usage.value.map((disk, i) => (
-                                <div key={i} className="flex items-center gap-2 bg-slate-50 p-1.5 rounded text-[11px]">
-                                  <span className="font-mono text-slate-600 truncate flex-1" title={disk.filesystem}>{disk.filesystem}</span>
-                                  <span className="text-slate-500 shrink-0">{disk.used}/{disk.total}</span>
-                                  <span className={`font-bold shrink-0 ${parseInt(disk.usage) > 80 ? 'text-red-600' : 'text-slate-700'}`}>{disk.usage}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </details>
-                    {/* 导出按钮 */}
-                    <button
-                      onClick={() => {
-                        const json = JSON.stringify(deviceInfoResult, null, 2);
-                        const blob = new Blob([json], { type: 'application/json' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `device-info-${new Date().toISOString().slice(0, 10)}.json`;
-                        a.click();
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
-                    >
-                      <Download size={12} />
-                      导出 JSON
-                    </button>
-                  </div>
-                )}
+              {COMMAND_CATEGORIES.map((cat) => {
+                const count = ADB_COMMANDS.filter((c) => c.category === cat).length;
+                const isActive = selectedCategory === cat;
 
-                {/* 单条命令按钮 */}
-                <div>
-                  <p className="text-xs text-slate-400 mb-2">或单独执行：</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {moduleCommands.map((cmd, i) => (
-                      <button
-                        key={i}
-                        onClick={() => executeHttp(cmd.cmd)}
-                        disabled={isRunning}
-                        className="px-3 py-2.5 text-left text-xs font-mono text-slate-600 hover:bg-white rounded-lg border border-slate-200 transition-colors disabled:opacity-50 truncate"
-                        title={cmd.desc}
-                      >
-                        {cmd.cmd.replace('adb ', '')}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              // 普通命令按钮
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {moduleCommands.map((cmd, i) => (
+                return (
                   <button
-                    key={i}
-                    onClick={() => executeHttp(cmd.cmd)}
-                    disabled={isRunning}
-                    className="px-3 py-2.5 text-left text-xs font-mono text-slate-600 hover:bg-white rounded-lg border border-slate-200 transition-colors disabled:opacity-50 truncate"
-                    title={cmd.desc}
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-colors flex items-center gap-1.5 ${
+                      isActive
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-950/40'
+                        : 'bg-slate-900 text-slate-400 hover:bg-slate-800'
+                    }`}
                   >
-                    {cmd.cmd.replace('adb ', '')}
+                    <span>{cat}</span>
+                    <span className="px-1.5 py-0.2 rounded-full bg-slate-950/60 text-[10px] font-mono">
+                      {count}
+                    </span>
                   </button>
-                ))}
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 动态命令卡片网格列表 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredCommands.length > 0 ? (
+              filteredCommands.map((command) => (
+                <AdbCommandCard
+                  key={command.id}
+                  command={command}
+                  onExecute={executeCommand}
+                  isExecuting={isRunning}
+                />
+              ))
+            ) : (
+              <div className="col-span-full py-12 bg-slate-900/40 rounded-xl border border-slate-800/60 text-center space-y-2">
+                <Layers className="w-8 h-8 text-slate-600 mx-auto" />
+                <p className="text-xs text-slate-400">未找到匹配的 ADB 命令配置项</p>
+                <p className="text-[11px] text-slate-500">请尝试更换搜索关键字或切换分类标签</p>
               </div>
             )}
           </div>
 
-          {/* 自定义命令输入 */}
-          <div className={`flex gap-2 ${!agentBaseUrl ? 'opacity-50 pointer-events-none' : ''}`}>
+          {/* 自定义命令执行工具行 */}
+          <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 flex gap-2">
             <input
               type="text"
               value={customCommand}
               onChange={(e) => setCustomCommand(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && executeHttp(customCommand)}
-              placeholder="输入自定义 ADB 命令"
-              className="flex-1 px-3 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 text-sm font-mono"
+              onKeyDown={(e) =>
+                e.key === 'Enter' && executeCommand({ id: 'custom', name: '自定义命令' }, customCommand, {})
+              }
+              placeholder="输入自由度更高或复杂的原声 ADB Shell 命令..."
+              className="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono text-slate-200 focus:outline-none focus:border-blue-500"
             />
             <button
-              onClick={() => executeHttp(customCommand)}
-              disabled={isRunning || !customCommand || !agentBaseUrl}
-              className={`px-4 py-2.5 rounded-lg font-bold text-sm text-white transition-all ${theme.primaryBg} ${theme.primaryHover} disabled:opacity-50`}
-              title="执行命令"
+              onClick={() => executeCommand({ id: 'custom', name: '自定义命令' }, customCommand, {})}
+              disabled={isRunning}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
             >
-              <Play size={16} />
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>标准执行</span>
             </button>
             <button
               onClick={() => executeStream(customCommand)}
-              disabled={isRunning || !customCommand || !agentBaseUrl}
-              className="px-4 py-2.5 rounded-lg font-bold text-sm text-white bg-purple-500 hover:bg-purple-600 transition-all disabled:opacity-50"
-              title="流式执行（适用于 logcat 等实时输出）"
+              disabled={isRunning}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
             >
-              <Terminal size={16} />
+              <Terminal className="w-3.5 h-3.5" />
+              <span>WebSocket 流式</span>
             </button>
           </div>
 
-          {/* 执行结果输出 */}
-          <div className="bg-slate-900 rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2.5 bg-slate-800">
-              <span className="text-xs font-bold text-slate-400">执行结果</span>
+          {/* 实时终端输出与控制栏 */}
+          <div className="bg-slate-950 rounded-xl border border-slate-800 overflow-hidden shadow-inner">
+            <div className="px-4 py-2.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400">
+              <span className="font-bold flex items-center gap-1.5 text-slate-300">
+                <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+                终端控制台输出 (Console Stream Output)
+              </span>
               <div className="flex items-center gap-2">
-                {isRunning && (
-                  <button
-                    onClick={killCommand}
-                    className="px-2 py-1 text-xs font-bold text-red-400 hover:bg-slate-700 rounded transition-colors"
-                  >
-                    <Square size={12} className="inline mr-1" />
-                    终止
-                  </button>
-                )}
                 <button
-                  onClick={clearOutput}
-                  className="px-2 py-1 text-xs text-slate-400 hover:bg-slate-700 rounded transition-colors"
+                  onClick={() => setOutput([])}
+                  className="hover:text-slate-200 transition-colors flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-800"
                 >
-                  <Trash2 size={12} className="inline mr-1" />
-                  清空
+                  <Trash2 className="w-3 h-3" />
+                  <span>清空</span>
                 </button>
                 <button
-                  onClick={exportOutput}
-                  className="px-2 py-1 text-xs text-slate-400 hover:bg-slate-700 rounded transition-colors"
+                  onClick={() => {
+                    const text = output.map((o) => `[${o.time}] ${o.data}`).join('\n');
+                    const blob = new Blob([text], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `adb-console-log-${Date.now()}.txt`;
+                    a.click();
+                  }}
+                  className="hover:text-slate-200 transition-colors flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-800"
                 >
-                  <Download size={12} className="inline mr-1" />
-                  导出
+                  <Download className="w-3 h-3" />
+                  <span>导出日志</span>
                 </button>
               </div>
             </div>
+
             <div
               ref={outputRef}
-              className="p-4 h-64 overflow-y-auto font-mono text-xs leading-relaxed"
+              className="p-4 h-64 overflow-y-auto font-mono text-xs leading-relaxed space-y-1 scrollbar-thin"
             >
               {output.length === 0 ? (
-                <p className="text-slate-500">等待命令执行...</p>
+                <div className="text-slate-600 italic">等待操作反馈或控制台输出...</div>
               ) : (
                 output.map((line, i) => (
                   <div key={i} className={`${outputStyles[line.type] || 'text-slate-300'} whitespace-pre-wrap break-all`}>
+                    <span className="text-slate-600 select-none mr-2">[{line.time}]</span>
                     {line.data}
                   </div>
                 ))
@@ -781,160 +583,10 @@ const AdbConsole = () => {
             </div>
           </div>
 
-          {/* 本地代理（包含快速开始） */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200 shadow-md overflow-hidden">
-            {/* 本地代理标题 */}
-            <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="p-2 rounded-lg bg-emerald-100 text-emerald-600">
-                  {agentDetecting ? (
-                    <RefreshCw size={18} className="animate-spin" />
-                  ) : agentBaseUrl ? (
-                    <Link size={18} />
-                  ) : (
-                    <Unlink size={18} />
-                  )}
-                </div>
-                <span className="text-base sm:text-lg font-bold text-slate-800">本地代理</span>
-                {agentBaseUrl && (
-                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
-                    已连接
-                  </span>
-                )}
-              </div>
-              <button
-                onClick={refreshAgentDetection}
-                disabled={agentDetecting}
-                className="px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 rounded transition-colors flex items-center gap-1"
-              >
-                <RefreshCw size={12} className={agentDetecting ? 'animate-spin' : ''} />
-                刷新
-              </button>
-            </div>
-
-            {/* 本地代理内容 */}
-            <div className="px-4 sm:px-6 py-4 space-y-4">
-              {/* 未检测到代理时显示引导 */}
-              {!agentDetecting && !agentBaseUrl && (
-                <LocalAgentGuide onTokenSubmit={handleTokenSubmit} />
-              )}
-
-              {/* 已检测到代理时显示 Token 配对 */}
-              {agentBaseUrl && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <CheckCircle size={14} className="text-emerald-500" />
-                    <span>代理地址: {agentBaseUrl}</span>
-                  </div>
-
-                  {/* Token 输入 */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <label className="text-xs font-medium text-slate-600">Token 配对</label>
-                      <button
-                        onClick={() => setShowToken(!showToken)}
-                        className="text-xs text-slate-400 hover:text-slate-600"
-                      >
-                        {showToken ? '隐藏' : '显示'}
-                      </button>
-                    </div>
-                    <div className="flex gap-2">
-                      <input
-                        type={showToken ? 'text' : 'password'}
-                        value={agentToken}
-                        onChange={(e) => setAgentToken(e.target.value)}
-                        placeholder="输入本地代理显示的 Token"
-                        className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 text-xs font-mono"
-                      />
-                      <button
-                        onClick={() => handleTokenSubmit(agentToken)}
-                        className="px-3 py-2 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
-                      >
-                        配对
-                      </button>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-1">
-                      运行本地代理后会显示 Token，请复制粘贴到这里
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* 快速开始 */}
-              <div className="bg-gradient-to-br from-slate-50 to-gray-50 rounded-lg border border-slate-200 overflow-hidden">
-                <button
-                  onClick={() => setShowQuickStart(!showQuickStart)}
-                  className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-100 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <Terminal size={14} className="text-emerald-500" />
-                    <span className="text-sm font-bold text-slate-700">快速开始</span>
-                  </div>
-                  <ChevronDown
-                    size={16}
-                    className={`text-slate-400 transition-transform duration-200 ${showQuickStart ? 'rotate-180' : ''}`}
-                  />
-                </button>
-
-                {showQuickStart && (
-                  <div className="px-4 pb-4 animate-in fade-in duration-200">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-600">
-                      <div className="space-y-2">
-                        <p className="font-bold text-slate-700">📱 WiFi 调试（推荐）</p>
-                        <ol className="list-decimal list-inside space-y-1">
-                          <li>下载并运行 <strong>ADB 本地代理</strong></li>
-                          <li>复制 Token 到网页进行配对</li>
-                          <li>手机开启 USB 调试</li>
-                          <li>首次用 USB 执行 <code className="bg-slate-100 px-1 rounded">adb tcpip 5555</code></li>
-                          <li>拔掉 USB，输入手机 IP 连接</li>
-                        </ol>
-                      </div>
-                      <div className="space-y-2">
-                        <p className="font-bold text-slate-700">🔌 USB 调试</p>
-                        <ol className="list-decimal list-inside space-y-1">
-                          <li>下载并运行 <strong>ADB 本地代理</strong></li>
-                          <li>复制 Token 到网页进行配对</li>
-                          <li>手机开启 USB 调试</li>
-                          <li>用 USB 线连接手机</li>
-                          <li>点击"刷新设备列表"</li>
-                        </ol>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                      <p className="text-xs text-amber-700">
-                        <strong>⚠️ 注意：</strong>
-                        首次使用需要下载并运行本地代理程序。
-                        代理会在你的电脑上启动一个本地服务，用于调用 ADB 命令。
-                        程序只监听 <code className="bg-amber-100 px-1 rounded">127.0.0.1</code>，安全可靠。
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* 参考详细使用指南 */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-4">
-                <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-                  <BookOpen size={14} className="text-blue-500" />
-                  参考详细使用指南
-                </h4>
-                <div className="text-xs text-slate-600 space-y-2">
-                  <p>如需更详细的使用说明，请参考以下文档：</p>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li><a href="/docs/adb-local-agent-guide.md" target="_blank" className="text-blue-500 hover:underline">ADB 本地代理使用指南</a></li>
-                    <li><a href="https://github.com/ShiinaMayuri123/online_toolbox_vite/blob/main/local-agent/README.md" target="_blank" className="text-blue-500 hover:underline">本地代理 README</a></li>
-                    <li><a href="https://developer.android.com/studio/releases/platform-tools" target="_blank" className="text-blue-500 hover:underline">Android SDK Platform Tools</a></li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-
+          {/* 执行历史追溯模块 */}
+          <ExecutionHistory history={history} onClearHistory={() => setHistory([])} />
         </div>
       )}
     </div>
   );
-};
-
-export default AdbConsole;
+}
