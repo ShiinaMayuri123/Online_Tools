@@ -16,7 +16,8 @@ export default function AdbParameterForm({ params = [], paramValues = {}, onChan
 
   return (
     <div className="space-y-3 bg-slate-900/60 p-3 rounded-lg border border-slate-800/80">
-      {params.map((p) => {
+      {params.filter(Boolean).map((p) => {
+        if (!p || !p.key) return null;
         const value = paramValues[p.key] !== undefined ? paramValues[p.key] : p.default;
 
         return (

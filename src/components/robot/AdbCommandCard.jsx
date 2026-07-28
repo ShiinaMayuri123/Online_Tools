@@ -32,8 +32,16 @@ export default function AdbCommandCard({ command, onExecute, isExecuting }) {
     }));
   };
 
-  // 动态构建最终产生的完整 ADB 命令
-  const builtCommand = command.build ? command.build(paramValues) : '';
+  // 动态构建最终产生的完整 ADB 命令 (带安全捕获保护)
+  const builtCommand = React.useMemo(() => {
+    if (!command || typeof command.build !== 'function') return '';
+    try {
+      return command.build(paramValues || {}) || '';
+    } catch (e) {
+      console.error('Failed to build ADB command:', e);
+      return '';
+    }
+  }, [command, paramValues]);
 
   const handleCopy = () => {
     if (!builtCommand) return;

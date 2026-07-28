@@ -11,6 +11,7 @@ const AdbTool = () => {
     <ToolLayout
       title="ADB 调试助手"
       description="局域网 Android 设备调试工具，支持 WiFi/USB 连接，实时命令执行"
+      contentClassName="pt-20 sm:pt-24 pb-16 sm:pb-20 px-3 sm:px-6 w-full max-w-[80%] mx-auto relative z-10 flex-grow"
     >
       <div className="space-y-6">
         {/* ADB 控制台（包含快速开始和参考详细使用指南） */}

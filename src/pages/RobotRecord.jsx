@@ -13,8 +13,6 @@ import Modal from '../components/common/Modal';
 import FaultPieChart from '../components/common/FaultPieChart';
 import useClipboard from '../hooks/useClipboard';
 import { useTheme } from '../contexts/ThemeContext';
-import AdbConsole from '../components/robot/AdbConsole';
-import AdbReferencePanel from '../components/robot/AdbReferencePanel';
 
 /**
  * MAC 地址输入框组件
@@ -339,11 +337,7 @@ const RobotRecord = () => {
         </div>
       )}
 
-      {/* ADB 控制台 */}
-      <AdbConsole />
 
-      {/* ADB 命令参考 */}
-      <AdbReferencePanel />
 
       {/* 导入设备弹窗 */}
       <Modal isOpen={showImportModal} onClose={() => { setShowImportModal(false); setImportMac(''); }}>
