@@ -14,6 +14,7 @@ export const THEMES = {
     textRaw: 'slate',
     textAccent: 'text-slate-600',
     bgLight: 'bg-slate-50',
+    panelTint: 'rgba(71, 85, 105, 0.20)',
     borderAccent: 'border-slate-200',
     ringFocus: 'ring-slate-400',
     gradientTitle: 'from-slate-600 via-gray-500 to-zinc-400',
@@ -25,7 +26,7 @@ export const THEMES = {
   blue: {
     name: 'Ocean',
     primaryBg: 'bg-indigo-500', primaryHover: 'hover:bg-indigo-600',
-    textRaw: 'indigo', textAccent: 'text-indigo-500', bgLight: 'bg-indigo-50/60',
+    textRaw: 'indigo', textAccent: 'text-indigo-500', bgLight: 'bg-indigo-50/60', panelTint: 'rgba(99, 102, 241, 0.20)',
     borderAccent: 'border-indigo-100', ringFocus: 'ring-indigo-400',
     gradientTitle: 'from-indigo-500 via-blue-400 to-sky-400',
     particleColor: 'rgba(99, 102, 241, 0.3)',
@@ -34,7 +35,7 @@ export const THEMES = {
   emerald: {
     name: 'Aurora',
     primaryBg: 'bg-emerald-500', primaryHover: 'hover:bg-emerald-600',
-    textRaw: 'emerald', textAccent: 'text-emerald-500', bgLight: 'bg-emerald-50/60',
+    textRaw: 'emerald', textAccent: 'text-emerald-500', bgLight: 'bg-emerald-50/60', panelTint: 'rgba(16, 185, 129, 0.20)',
     borderAccent: 'border-emerald-100', ringFocus: 'ring-emerald-400',
     gradientTitle: 'from-emerald-500 via-teal-400 to-cyan-300',
     particleColor: 'rgba(16, 185, 129, 0.3)',
@@ -43,7 +44,7 @@ export const THEMES = {
   violet: {
     name: 'Neon',
     primaryBg: 'bg-purple-500', primaryHover: 'hover:bg-purple-600',
-    textRaw: 'purple', textAccent: 'text-purple-500', bgLight: 'bg-purple-50/60',
+    textRaw: 'purple', textAccent: 'text-purple-500', bgLight: 'bg-purple-50/60', panelTint: 'rgba(147, 51, 234, 0.20)',
     borderAccent: 'border-purple-100', ringFocus: 'ring-purple-400',
     gradientTitle: 'from-purple-500 via-violet-400 to-indigo-300',
     particleColor: 'rgba(147, 51, 234, 0.25)',
@@ -52,7 +53,7 @@ export const THEMES = {
   cyan: {
     name: 'Steel',
     primaryBg: 'bg-slate-500', primaryHover: 'hover:bg-slate-600',
-    textRaw: 'slate', textAccent: 'text-slate-500', bgLight: 'bg-slate-50/60',
+    textRaw: 'slate', textAccent: 'text-slate-500', bgLight: 'bg-slate-50/60', panelTint: 'rgba(100, 116, 139, 0.20)',
     borderAccent: 'border-slate-200', ringFocus: 'ring-slate-400',
     gradientTitle: 'from-slate-500 via-blue-300 to-cyan-300',
     particleColor: 'rgba(100, 116, 139, 0.25)',
@@ -61,7 +62,7 @@ export const THEMES = {
   zinc: {
     name: 'Onyx',
     primaryBg: 'bg-zinc-700', primaryHover: 'hover:bg-zinc-800',
-    textRaw: 'zinc', textAccent: 'text-zinc-700', bgLight: 'bg-zinc-50',
+    textRaw: 'zinc', textAccent: 'text-zinc-700', bgLight: 'bg-zinc-50', panelTint: 'rgba(24, 24, 27, 0.20)',
     borderAccent: 'border-zinc-200', ringFocus: 'ring-zinc-500',
     gradientTitle: 'from-zinc-700 via-neutral-600 to-stone-500',
     particleColor: 'rgba(24, 24, 27, 0.35)',
@@ -70,7 +71,7 @@ export const THEMES = {
   sky: {
     name: 'Frost',
     primaryBg: 'bg-sky-500', primaryHover: 'hover:bg-sky-600',
-    textRaw: 'sky', textAccent: 'text-sky-500', bgLight: 'bg-sky-50/60',
+    textRaw: 'sky', textAccent: 'text-sky-500', bgLight: 'bg-sky-50/60', panelTint: 'rgba(14, 165, 233, 0.20)',
     borderAccent: 'border-sky-100', ringFocus: 'ring-sky-400',
     gradientTitle: 'from-sky-500 via-blue-400 to-slate-300',
     particleColor: 'rgba(14, 165, 233, 0.25)',

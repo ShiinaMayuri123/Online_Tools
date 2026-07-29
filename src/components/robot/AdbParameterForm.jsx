@@ -9,25 +9,25 @@ export default function AdbParameterForm({ params = [], paramValues = {}, onChan
   if (!params || params.length === 0) {
     return (
       <div className="text-xs text-slate-500 italic py-1">
-        该命令无需额外参数，可直接执行
+        命令会先填入终端
       </div>
     );
   }
 
   return (
-    <div className="space-y-3 bg-slate-900/60 p-3 rounded-lg border border-slate-800/80">
+    <div className="space-y-3 bg-slate-50/80 p-3 rounded-lg border border-slate-200">
       {params.filter(Boolean).map((p) => {
         if (!p || !p.key) return null;
         const value = paramValues[p.key] !== undefined ? paramValues[p.key] : p.default;
 
         return (
           <div key={p.key} className="flex flex-col space-y-1">
-            <label className="text-xs font-medium text-slate-300 flex items-center justify-between">
+            <label className="text-xs font-medium text-slate-600 flex items-center justify-between">
               <span>
                 {p.label}
                 {p.required && <span className="text-rose-400 ml-1">*</span>}
               </span>
-              <span className="text-[10px] text-slate-500 font-mono">key: {p.key}</span>
+              <span className="text-[10px] text-slate-400 font-mono">{p.key}</span>
             </label>
 
             {/* 1. 文本输入框 */}
@@ -37,7 +37,7 @@ export default function AdbParameterForm({ params = [], paramValues = {}, onChan
                 value={value || ''}
                 placeholder={p.placeholder || ''}
                 onChange={(e) => onChange(p.key, e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-slate-950/80 border border-slate-700/60 rounded text-xs text-slate-200 focus:outline-none focus:border-blue-500 font-mono transition-colors"
+                className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 font-mono transition-colors"
               />
             )}
 
@@ -49,7 +49,7 @@ export default function AdbParameterForm({ params = [], paramValues = {}, onChan
                   value={value || ''}
                   placeholder={p.placeholder || '路径或选取文件'}
                   onChange={(e) => onChange(p.key, e.target.value)}
-                  className="flex-1 px-2.5 py-1.5 bg-slate-950/80 border border-slate-700/60 rounded text-xs text-slate-200 focus:outline-none focus:border-blue-500 font-mono"
+                  className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 font-mono"
                 />
                 <label className="cursor-pointer px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-slate-300 flex items-center gap-1 transition-colors">
                   <Upload className="w-3.5 h-3.5 text-blue-400" />
@@ -72,7 +72,7 @@ export default function AdbParameterForm({ params = [], paramValues = {}, onChan
               <select
                 value={value || ''}
                 onChange={(e) => onChange(p.key, e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-slate-950/80 border border-slate-700/60 rounded text-xs text-slate-200 focus:outline-none focus:border-blue-500 font-mono"
+                className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 font-mono"
               >
                 {p.options?.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -119,14 +119,14 @@ export default function AdbParameterForm({ params = [], paramValues = {}, onChan
                       onClick={handleToggle}
                       className={`flex items-center gap-1.5 text-left px-2 py-1.5 rounded border text-xs transition-colors ${
                         isChecked
-                          ? 'bg-blue-950/60 border-blue-600/70 text-blue-300'
-                          : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700'
+                          ? 'bg-blue-50 border-blue-300 text-blue-700'
+                          : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
                       }`}
                     >
                       {isChecked ? (
-                        <CheckSquare className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                        <CheckSquare className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                       ) : (
-                        <Square className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                        <Square className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                       )}
                       <span className="truncate">{opt.label}</span>
                     </button>

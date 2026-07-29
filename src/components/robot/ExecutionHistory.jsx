@@ -14,8 +14,8 @@ export default function ExecutionHistory({ history = [], onClearHistory }) {
 
   if (!history || history.length === 0) {
     return (
-      <div className="bg-slate-900/60 rounded-xl border border-slate-800/80 p-6 text-center">
-        <History className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+      <div className="bg-white/60 rounded-xl border border-slate-200 p-6 text-center">
+        <History className="w-8 h-8 text-slate-300 mx-auto mb-2" />
         <p className="text-xs text-slate-400">暂无命令执行历史记录</p>
         <p className="text-[11px] text-slate-500 mt-1">在面板中触发任何 ADB 命令后，其记录与运行耗时将自动在此显示</p>
       </div>
@@ -23,7 +23,7 @@ export default function ExecutionHistory({ history = [], onClearHistory }) {
   }
 
   return (
-    <div className="bg-slate-900/80 rounded-xl border border-slate-800 p-4 space-y-3">
+    <div className="bg-white/60 rounded-xl border border-slate-200 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <History className="w-4 h-4 text-blue-400" />
@@ -34,7 +34,7 @@ export default function ExecutionHistory({ history = [], onClearHistory }) {
         </div>
         <button
           onClick={onClearHistory}
-          className="text-xs text-slate-400 hover:text-rose-400 transition-colors flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-800"
+          className="text-xs text-slate-400 hover:text-rose-500 transition-colors flex items-center gap-1 px-2 py-1 rounded hover:bg-rose-50"
         >
           <Trash2 className="w-3.5 h-3.5" />
           <span>清空记录</span>
@@ -49,7 +49,7 @@ export default function ExecutionHistory({ history = [], onClearHistory }) {
           return (
             <div
               key={item.id}
-              className="bg-slate-950 border border-slate-800/80 rounded-lg p-2.5 space-y-1.5 transition-colors hover:border-slate-700/60"
+              className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 space-y-1.5 transition-colors hover:border-slate-300"
             >
               <div className="flex items-center justify-between text-xs cursor-pointer" onClick={() => toggleExpand(item.id)}>
                 <div className="flex items-center gap-2 overflow-hidden">
@@ -74,12 +74,12 @@ export default function ExecutionHistory({ history = [], onClearHistory }) {
                 </div>
               </div>
 
-              <div className="font-mono text-xs text-amber-300/90 bg-black/40 px-2 py-1 rounded truncate">
+              <div className="font-mono text-xs text-slate-600 bg-white px-2 py-1 rounded truncate border border-slate-100">
                 {item.fullCmd}
               </div>
 
               {isExpanded && (
-                <div className="pt-2 mt-2 border-t border-slate-800 text-xs space-y-1 animate-fadeIn">
+                <div className="pt-2 mt-2 border-t border-slate-200 text-xs space-y-1 animate-fadeIn">
                   {item.output && (
                     <div>
                       <div className="text-[10px] text-slate-400 font-semibold mb-1">执行输出:</div>

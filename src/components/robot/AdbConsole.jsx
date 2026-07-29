@@ -12,8 +12,11 @@ import AdbCommandCard from './AdbCommandCard';
 import ExecutionHistory from './ExecutionHistory';
 import RobotHealthDiagnostic from './RobotHealthDiagnostic';
 import AdbTerminal from './AdbTerminal';
+import DangerConfirmModal from './DangerConfirmModal';
+import AdbWorkspace from './AdbWorkspace';
+import { ADB_SECTIONS, TROUBLESHOOTING_FLOWS, DEVICE_SPECIFIC_INFO, TEST_SUMMARY, LOG_FILTER_KEYWORDS } from '../../config/adbData';
 
-const AGENT_PORTS = [5038, 5039, 5040, 12553, 12554, 3001];
+const AGENT_PORTS = [5038, 5039, 5040, 12553, 12554, 12555, 3001];
 
 /**
  * 自动检测本地代理是否运行
@@ -29,7 +32,13 @@ async function detectLocalAgent() {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.ok) return `http://127.0.0.1:${port}`;
+        if (data.ok) {
+          const tokenResponse = await fetch(`http://127.0.0.1:${port}/token`, {
+            cache: 'no-store', mode: 'cors', signal: AbortSignal.timeout(1000),
+          });
+          const tokenData = tokenResponse.ok ? await tokenResponse.json() : {};
+          return { baseUrl: `http://127.0.0.1:${port}`, token: tokenData.token || '' };
+        }
       }
     } catch {
       // 继续探查下一个端口
@@ -40,18 +49,41 @@ async function detectLocalAgent() {
 
 const getApiKey = () => localStorage.getItem('adb_local_agent_token') || '';
 
+const placeholderPattern = /<([^>]+)>/g;
+const toReferenceCommand = (section, item, index) => {
+  const matches = [...item.cmd.matchAll(placeholderPattern)];
+  const params = matches.map((match, paramIndex) => ({
+    key: `value${paramIndex}`, label: match[1], type: 'text', required: true,
+  }));
+  return {
+    id: `reference-${section.title}-${index}`,
+    name: item.desc,
+    category: section.title,
+    description: item.desc,
+    danger: item.risk || 'none',
+    params,
+    build: (values = {}) => item.cmd.replace(placeholderPattern, (_, __, offset) => {
+      const matchIndex = [...item.cmd.slice(0, offset).matchAll(placeholderPattern)].length;
+      return values[`value${matchIndex}`] || `<${matches[matchIndex]?.[1] || '参数'}>`;
+    }),
+  };
+};
+
 export default function AdbConsole() {
   const { theme } = useTheme();
   const outputRef = useRef(null);
   const wsRef = useRef(null);
+  const hasDetectedAgentRef = useRef(false);
 
   // 本地代理与安全连接
   const [agentBaseUrl, setAgentBaseUrl] = useState(null);
   const [agentDetecting, setAgentDetecting] = useState(true);
   const [agentToken, setAgentToken] = useState(getApiKey());
+  const [refreshingDevices, setRefreshingDevices] = useState(false);
 
   // 设备状态
   const [connectionInput, setConnectionInput] = useState('192.168.51.143');
+  const [portInput, setPortInput] = useState('5555');
   const [connectedDevice, setConnectedDevice] = useState(null);
   const [connecting, setConnecting] = useState(false);
   const [devices, setDevices] = useState([]);
@@ -65,6 +97,8 @@ export default function AdbConsole() {
   // 控制台输出与终端状态
   const [output, setOutput] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [activePanel, setActivePanel] = useState('commands');
+  const [dangerCommand, setDangerCommand] = useState(null);
 
   // 执行历史记录 (LocalStorage 持久化)
   const [history, setHistory] = useState(() => {
@@ -135,21 +169,31 @@ export default function AdbConsole() {
     ws.onclose = () => addOutput('system', 'WebSocket 连接已关闭');
   };
 
-  useEffect(() => {
-    const detect = async () => {
-      setAgentDetecting(true);
-      const baseUrl = await detectLocalAgent();
-      setAgentBaseUrl(baseUrl);
-      setAgentDetecting(false);
+  const detectAgent = async () => {
+    setAgentDetecting(true);
+    const agent = await detectLocalAgent();
+    const baseUrl = agent?.baseUrl || null;
+    const token = agent?.token || agentToken;
+    setAgentBaseUrl(baseUrl);
+    if (token) {
+      setAgentToken(token);
+      localStorage.setItem('adb_local_agent_token', token);
+    }
+    setAgentDetecting(false);
 
-      if (baseUrl) {
-        addOutput('system', `已感知到机器代理服务运行于: ${baseUrl}`);
-        if (agentToken) connectWebSocket(baseUrl, agentToken);
-      } else {
-        addOutput('system', '未发现可用的本地 ADB 代理服务');
-      }
-    };
-    detect();
+    if (baseUrl) {
+      addOutput('system', `已连接现场连接助手: ${baseUrl}`);
+      if (token) connectWebSocket(baseUrl, token);
+      refreshDevices(baseUrl, token);
+    } else {
+      addOutput('error', '未找到现场连接助手，请先双击启动连接助手后再重试');
+    }
+  };
+
+  useEffect(() => {
+    if (hasDetectedAgentRef.current) return;
+    hasDetectedAgentRef.current = true;
+    detectAgent();
   }, []);
 
   useEffect(() => {
@@ -171,7 +215,7 @@ export default function AdbConsole() {
 
     try {
       // 优先发送安全路由 /api/adb/exec-safe，后置兜底普通 /api/adb/exec
-      let res = await fetch(`${agentBaseUrl || ''}/api/adb/exec-safe`, {
+      let res = await fetch(`${agentBaseUrl || ''}/adb/exec-safe`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
@@ -183,7 +227,7 @@ export default function AdbConsole() {
 
       if (res.status === 404) {
         // 如果后端尚未更新 safe 路由，降级回传统 exec 接口
-        res = await fetch(`${agentBaseUrl || ''}/api/adb/exec`, {
+        res = await fetch(`${agentBaseUrl || ''}/adb/exec`, {
           method: 'POST',
           headers: getHeaders(),
           body: JSON.stringify({ command: builtCmd }),
@@ -250,12 +294,19 @@ export default function AdbConsole() {
 
   // 设备连接控制
   const handleConnect = async () => {
-    if (!connectionInput || !agentBaseUrl) return;
+    if (!connectionInput) {
+      addOutput('error', '请输入设备 IP 地址');
+      return;
+    }
+    if (!agentBaseUrl) {
+      addOutput('error', '未检测到现场连接助手，请先启动连接助手后点击重新检测');
+      return;
+    }
     setConnecting(true);
     const targetIp = connectionInput.trim();
     const targetPort = portInput.trim() || '5555';
     try {
-      const res = await fetch(`${agentBaseUrl}/api/adb/connect`, {
+      const res = await fetch(`${agentBaseUrl}/adb/connect`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
@@ -278,9 +329,13 @@ export default function AdbConsole() {
   };
 
   const handleDisconnect = async (device) => {
-    if (!agentBaseUrl) return;
+    if (!agentBaseUrl) {
+      addOutput('error', '未检测到现场连接助手，请先启动连接助手后点击重新检测');
+      return;
+    }
+    setRefreshingDevices(true);
     try {
-      await fetch(`${agentBaseUrl}/api/adb/disconnect`, {
+      await fetch(`${agentBaseUrl}/adb/disconnect`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ device }),
@@ -290,29 +345,52 @@ export default function AdbConsole() {
       refreshDevices();
     } catch (e) {
       addOutput('error', `断开命令失败: ${e.message}`);
+    } finally {
+      setRefreshingDevices(false);
     }
   };
 
-  const refreshDevices = async () => {
-    if (!agentBaseUrl) return;
+  const refreshDevices = async (baseUrl = agentBaseUrl, token = agentToken) => {
+    if (!baseUrl) {
+      addOutput('error', '连接助手未运行，无法刷新设备');
+      return;
+    }
+    setRefreshingDevices(true);
     try {
-      const res = await fetch(`${agentBaseUrl}/api/adb/devices`, { headers: getHeaders() });
+      const res = await fetch(`${baseUrl}/adb/devices`, {
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
-      if (data.success) setDevices(data.devices);
+      if (!res.ok || !data.success) throw new Error(data.error || '设备列表获取失败');
+      setDevices(data.devices || []);
+      addOutput('system', `已刷新设备列表，共 ${data.devices?.length || 0} 台设备`);
     } catch (e) {
       console.error('设备列表感知异常:', e);
+      addOutput('error', `刷新设备失败: ${e.message}`);
+    } finally {
+      setRefreshingDevices(false);
     }
   };
 
   // 仅保留配置有交互参数的 ADB 命令卡片，过滤纯静态无参命令（避免与下方参考面板重复）
-  const parameterizedCommands = useMemo(() => {
-    if (!Array.isArray(ADB_COMMANDS)) return [];
-    return ADB_COMMANDS.filter((c) => c && Array.isArray(c.params) && c.params.length > 0);
+  const libraryCommands = useMemo(() => {
+    const configured = Array.isArray(ADB_COMMANDS) ? ADB_COMMANDS.filter(Boolean) : [];
+    const configuredTexts = new Set(configured.map((command) => {
+      try { return command.build({}); } catch { return ''; }
+    }));
+    const references = ADB_SECTIONS.flatMap((section) => section.commands.map((item, index) => toReferenceCommand(section, item, index)))
+      .filter((command) => {
+        const text = command.build({});
+        if (configuredTexts.has(text)) return false;
+        configuredTexts.add(text);
+        return true;
+      });
+    return [...configured, ...references];
   }, []);
 
   // 模糊搜索与分类筛选过滤
   const filteredCommands = useMemo(() => {
-    return parameterizedCommands.filter((cmd) => {
+    return libraryCommands.filter((cmd) => {
       if (!cmd) return false;
       // 1. 分类筛选
       const matchCategory = selectedCategory === '全部' || cmd.category === selectedCategory;
@@ -328,7 +406,42 @@ export default function AdbConsole() {
         (cmd.id && cmd.id.toLowerCase().includes(q))
       );
     });
-  }, [parameterizedCommands, selectedCategory, searchQuery]);
+  }, [libraryCommands, selectedCategory, searchQuery]);
+
+  const commandGroups = useMemo(() => {
+    const groups = [];
+    filteredCommands.forEach((command) => {
+      let group = groups.find((item) => item.category === command.category);
+      if (!group) {
+        group = { category: command.category, commands: [] };
+        groups.push(group);
+      }
+      group.commands.push(command);
+    });
+    return groups;
+  }, [filteredCommands]);
+
+  const fillTerminal = (command, builtCmd) => {
+    if (!builtCmd) return;
+    if (customCommand.trim() && customCommand.trim() !== builtCmd.trim() && !window.confirm('终端中已有命令，是否替换？')) return;
+    setCustomCommand(builtCmd);
+    addOutput('system', `已填入终端：${builtCmd}`);
+  };
+
+  const handleTerminalExecute = (commandText) => {
+    const builtCmd = commandText.trim();
+    if (!builtCmd) return;
+    const matched = libraryCommands.find((command) => {
+      try { return command.build({}) === builtCmd; } catch { return false; }
+    });
+    const highRisk = matched?.danger === 'high' || /(rm\s+-r[f]?|reboot|pm\s+clear|adb\s+root)/i.test(builtCmd);
+    const command = matched || { id: 'custom', name: '自定义命令', description: '终端中输入的命令', danger: highRisk ? 'high' : 'none' };
+    if (highRisk) {
+      setDangerCommand({ command: { ...command, danger: 'high' }, builtCmd });
+      return;
+    }
+    executeCommand(command, builtCmd, {});
+  };
 
   const outputStyles = {
     command: 'text-blue-400 font-bold',
@@ -337,6 +450,50 @@ export default function AdbConsole() {
     error: 'text-rose-400',
     system: 'text-purple-400',
   };
+
+  const executeFromTerminal = (commandText, commandObj) => {
+    if (commandObj) {
+      executeCommand(commandObj, commandText, {});
+      return;
+    }
+    handleTerminalExecute(commandText);
+  };
+
+  return (
+    <AdbWorkspace
+      theme={theme}
+      commands={libraryCommands}
+      output={output}
+      outputRef={outputRef}
+      customCommand={customCommand}
+      setCustomCommand={setCustomCommand}
+      onExecute={executeFromTerminal}
+      onFillTerminal={fillTerminal}
+      onExecuteStream={executeStream}
+      isRunning={isRunning}
+      history={history}
+      onClearOutput={() => setOutput([])}
+      onClearHistory={() => setHistory([])}
+      activePanel={activePanel}
+      setActivePanel={setActivePanel}
+      connectionInput={connectionInput}
+      setConnectionInput={setConnectionInput}
+      portInput={portInput}
+      setPortInput={setPortInput}
+      connectedDevice={connectedDevice}
+      connecting={connecting}
+      agentBaseUrl={agentBaseUrl}
+      agentDetecting={agentDetecting}
+      onDetect={detectAgent}
+      handleConnect={handleConnect}
+      handleDisconnect={handleDisconnect}
+      devices={devices}
+      refreshDevices={refreshDevices}
+      refreshingDevices={refreshingDevices}
+      dangerCommand={dangerCommand}
+      setDangerCommand={setDangerCommand}
+    />
+  );
 
   return (
     <div className="bg-slate-950 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden animate-fadeIn">

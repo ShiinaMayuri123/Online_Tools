@@ -173,6 +173,7 @@ app.get('/health', (req, res) => {
 // 获取 Token 信息（用于前端显示配对状态）
 app.get('/token', (req, res) => {
   res.json({
+    token: API_TOKEN,
     tokenPreview: API_TOKEN.slice(0, 8) + '...',
     hasToken: true
   });
@@ -566,7 +567,7 @@ wss.on('connection', (ws, req) => {
 if (existsSync(DIST_DIR)) {
   app.use(express.static(DIST_DIR));
   // SPA fallback：非 API 路由都返回 index.html
-  app.get('*', (req, res) => {
+  app.use((req, res) => {
     if (req.path.startsWith('/adb/') || req.path.startsWith('/health') || req.path.startsWith('/token') || req.path.startsWith('/ws')) {
       return res.status(404).json({ error: 'Not found' });
     }

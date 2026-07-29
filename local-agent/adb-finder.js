@@ -4,7 +4,8 @@
  */
 import { execSync } from 'child_process';
 import { existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 
 /**
@@ -12,6 +13,20 @@ import { homedir } from 'os';
  * @returns {string|null} adb 路径，未找到返回 null
  */
 export function findAdb() {
+  const agentDir = dirname(fileURLToPath(import.meta.url));
+  const executableDir = dirname(process.execPath);
+  const bundledPaths = [
+    join(executableDir, 'adb.exe'),
+    join(agentDir, 'adb.exe'),
+  ];
+
+  for (const p of bundledPaths) {
+    if (existsSync(p)) {
+      console.log(`[ADB] 使用连接助手目录中的 ADB: ${p}`);
+      return p;
+    }
+  }
+
   // 1. 检查 PATH 环境变量
   try {
     const adbPath = execSync('where adb', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
@@ -30,8 +45,8 @@ export function findAdb() {
     join(home, 'AppData', 'Local', 'Android', 'Sdk', 'platform-tools', 'adb.exe'),
     join(home, 'Android', 'Sdk', 'platform-tools', 'adb.exe'),
     // 本机目录（打包时可内置）
-    join(import.meta.dirname, 'adb.exe'),
-    join(import.meta.dirname, 'platform-tools', 'adb.exe'),
+    join(agentDir, 'adb.exe'),
+    join(agentDir, 'platform-tools', 'adb.exe'),
     // Program Files
     'C:\\Program Files\\Android\\android-sdk\\platform-tools\\adb.exe',
     'C:\\Program Files (x86)\\Android\\android-sdk\\platform-tools\\adb.exe',
