@@ -43,7 +43,7 @@ if %errorlevel% neq 0 (
 echo.
 echo [3/4] 打包 Windows 可执行文件...
 if not exist dist mkdir dist
-call npx pkg . --targets node18-win-x64 --output dist/adb-agent.exe
+call npm run build
 if %errorlevel% neq 0 (
     echo [错误] 打包失败
     pause

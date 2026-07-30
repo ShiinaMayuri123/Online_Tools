@@ -15,16 +15,15 @@ import { spawn, exec } from 'child_process';
 import crypto from 'crypto';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 import { findAdb, checkAdbAvailable } from './adb-finder.js';
 import { findAvailablePort, DEFAULT_PORT } from './port-finder.js';
 
 // ============ 配置 ============
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const DIST_DIR = join(__dirname, '..', 'dist');
-const TOKEN_FILE = join(__dirname, 'agent.token');
+const __dirname = process.pkg ? dirname(process.execPath) : process.cwd();
+const runtimeDir = process.pkg ? dirname(process.execPath) : __dirname;
+const DIST_DIR = process.pkg ? join(runtimeDir, 'frontend-dist') : join(__dirname, '..', 'dist');
+const TOKEN_FILE = join(runtimeDir, 'agent.token');
 const ALLOWED_ORIGINS = ['*']; // 开发时允许所有来源，生产环境改为你的域名
 
 // ============ Token 管理 ============

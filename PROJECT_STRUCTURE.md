@@ -33,6 +33,7 @@ online_toolbox_vite/
 │   ├── adb-finder.js               # 自动寻找 adb.exe
 │   ├── port-finder.js              # 查找可用本机服务端口
 │   ├── prepare-adb.mjs             # 打包前复制 adb.exe 和 Platform Tools DLL
+│   ├── bundle-agent.mjs            # 将 ESM 源码转换为 pkg 可打包的 CommonJS 入口
 │   ├── package.json                # 连接助手依赖和打包命令
 │   ├── package-lock.json           # 连接助手依赖锁定版本
 │   ├── build.bat                   # Windows 一键打包脚本
@@ -185,6 +186,7 @@ ADB 当前工作流是：命令卡片点击后只把命令填入终端；用户�
 | `adb-finder.js` | 优先寻找助手目录中的 `adb.exe`，再检查 PATH、Android SDK 和常见安装路径。 |
 | `port-finder.js` | 从首选端口和备用端口中寻找可用监听端口。 |
 | `prepare-adb.mjs` | 从系统 PATH 或当前目录准备 `adb.exe`，并复制 Windows ADB DLL 到 `dist`。 |
+| `bundle-agent.mjs` | 使用 esbuild 将 ESM 连接助手转换成 pkg 可运行的 CommonJS 单文件。 |
 | `package.json` | 定义助手依赖、启动脚本和 `pkg` Windows 打包脚本。 |
 | `package-lock.json` | 锁定助手依赖版本，保证构建结果可复现。 |
 | `build.bat` | Windows 开发者打包入口，生成 `dist/adb-agent.exe`。 |

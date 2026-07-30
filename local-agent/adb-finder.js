@@ -5,7 +5,6 @@
 import { execSync } from 'child_process';
 import { existsSync } from 'fs';
 import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 
 /**
@@ -13,7 +12,7 @@ import { homedir } from 'os';
  * @returns {string|null} adb 路径，未找到返回 null
  */
 export function findAdb() {
-  const agentDir = dirname(fileURLToPath(import.meta.url));
+  const agentDir = process.pkg ? dirname(process.execPath) : process.cwd();
   const executableDir = dirname(process.execPath);
   const bundledPaths = [
     join(executableDir, 'adb.exe'),

@@ -24,8 +24,12 @@ copyFileSync(adbPath, 'adb.exe');
 copyFileSync(adbPath, join('dist', 'adb.exe'));
 
 for (const dll of ['AdbWinApi.dll', 'AdbWinUsbApi.dll']) {
-  const dllPath = join(dirname(adbPath), dll);
-  if (existsSync(dllPath)) copyFileSync(dllPath, join('dist', basename(dllPath)));
+  const candidates = [
+    join(dirname(adbPath), dll),
+    join(process.env.SystemRoot || 'C:\\Windows', dll),
+  ];
+  const dllPath = candidates.find((candidate) => existsSync(candidate));
+  if (dllPath) copyFileSync(dllPath, join('dist', basename(dllPath)));
 }
 
 console.log(`已准备 ADB: ${adbPath}`);
