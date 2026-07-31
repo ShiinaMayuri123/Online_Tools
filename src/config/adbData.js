@@ -278,6 +278,50 @@ export const TROUBLESHOOTING_FLOWS = [
 // ── 设备特定信息 ────────────────────────────────────────────
 export const DEVICE_SPECIFIC_INFO = [
   {
+    id: 'sdcard-structure',
+    title: '/sdcard 顶层结构',
+    icon: Folder,
+    items: [
+      { name: 'pudu/', desc: '机器人核心业务数据（22 个子目录）' },
+      { name: 'PuduRobotLog/', desc: '机器人运行日志（含 EKF）' },
+      { name: 'PuduRobotMap/', desc: 'Atlas、地图、标定与定位数据' },
+      { name: 'pd_app_run_log/', desc: 'App 运行日志' },
+      { name: 'pdconfig/', desc: '机器人配置（含 lease）' },
+      { name: 'Android/、DCIM/、Download/', desc: '标准 Android 应用与媒体目录' },
+      { name: 'NavigationPage/、mapify/、msc/', desc: '导航、地图与语音相关目录' },
+    ],
+  },
+  {
+    id: 'pudu-core-directories',
+    title: '/sdcard/pudu 核心目录',
+    icon: Folder,
+    items: [
+      { name: 'log/', desc: '运行日志（702 个 *.pdlog 文件）' },
+      { name: 'config/', desc: 'XML、CFG、JSON 配置与备份' },
+      { name: 'map/', desc: '地图文件（*.pdmap，如 eW16.pdmap）' },
+      { name: 'data/', desc: '15 类传感器标定与采集数据' },
+      { name: 'static_map/、compatmap/', desc: '静态与兼容地图数据' },
+      { name: 'files/、dmesg/、error_marker_list/', desc: '暂存文件、内核日志与错误标记' },
+      { name: 'lidar_mapping/、rgbd_drop_data/、_rgbd_sensor_/', desc: '建图与 RGBD 传感器数据' },
+      { name: 'auto_dock_data/、music/、netDownload/、remote/', desc: '充电、语音、下载与远程数据' },
+    ],
+  },
+  {
+    id: 'other-robot-directories',
+    title: '其他机器人相关目录',
+    icon: Folder,
+    items: [
+      { name: '/sdcard/PuduRobotMap/ATLAS_DATA/', desc: 'Atlas 地图数据' },
+      { name: '/sdcard/PuduRobotMap/MAP_DATA/', desc: '地图数据' },
+      { name: '/sdcard/PuduRobotMap/calibrate/', desc: '标定数据' },
+      { name: '/sdcard/PuduRobotMap/locate_map.*', desc: '定位地图（data、ekf、slip 多格式）' },
+      { name: '/sdcard/PuduRobotMap/rgbd.json', desc: 'RGBD 配置' },
+      { name: '/sdcard/PuduRobotMap/scheduling_config.yaml', desc: '调度配置' },
+      { name: '/sdcard/PuduRobotLog/EKF/', desc: 'EKF 相关日志' },
+      { name: '/sdcard/pdconfig/lease/', desc: '租赁与授权配置' },
+    ],
+  },
+  {
     id: 'pudu-apps',
     title: '普渡应用列表',
     icon: Package,
