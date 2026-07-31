@@ -9,7 +9,7 @@ import {
   Stethoscope, MousePointer,
 } from 'lucide-react';
 
-// ── ADB 命令分类（8 个分类，含状态/风险标注） ──────────────────
+// ── ADB 命令分类（9 个分类，含状态/风险标注） ──────────────────
 export const ADB_SECTIONS = [
   {
     title: '连接管理',
@@ -98,6 +98,15 @@ export const ADB_SECTIONS = [
     ],
   },
   {
+    title: '地图管理',
+    icon: Folder,
+    commands: [
+      { cmd: 'adb pull /sdcard/pudu/map/<地图文件名> ./', desc: '从设备拉取地图文件（默认目录 /sdcard/pudu/map/，示例文件名：eW16.pdmap）', status: 'untested' },
+      { cmd: 'adb push <本地地图路径> /sdcard/pudu/map/', desc: '推送地图文件到设备（覆盖同名文件）', status: 'untested', risk: 'medium', consequence: '覆盖设备上同名地图' },
+      { cmd: 'adb shell rm -rf /sdcard/pudu/map/<地图文件名>', desc: '删除设备上的地图文件', status: 'untested', risk: 'high', consequence: '地图文件永久删除，不可恢复' },
+    ],
+  },
+  {
     title: '屏幕与输入',
     icon: Monitor,
     commands: [
@@ -116,11 +125,12 @@ export const ADB_SECTIONS = [
       { cmd: 'adb reboot', desc: '重启设备', status: 'untested', risk: 'medium', consequence: '当前任务中断，设备立即重启' },
       { cmd: 'adb reboot recovery', desc: '进入 Recovery 模式', status: 'untested', risk: 'high', consequence: '设备无法正常工作，需手动操作退出' },
       { cmd: 'adb root', desc: '以 root 权限重启 adbd', status: 'untested', risk: 'medium' },
+      { cmd: 'adb shell am start -n com.android.launcher3/com.android.launcher3.Launcher', desc: '返回安卓原生桌面（退出机器人业务 App，用于 App 卡死时跳出）', status: 'untested' },
     ],
   },
 ];
 
-// ── 故障排查流程（6 个场景） ──────────────────────────────────
+// ── 故障排查流程（13 个场景） ─────────────────────────────────
 export const TROUBLESHOOTING_FLOWS = [
   {
     id: 'network',
@@ -252,6 +262,17 @@ export const TROUBLESHOOTING_FLOWS = [
       { cmd: 'adb shell dumpsys sensorservice', desc: '查看传感器状态' },
     ],
   },
+  {
+    id: 'map-files',
+    title: '地图文件管理',
+    icon: Folder,
+    steps: [
+      { cmd: 'adb shell ls -l /sdcard/pudu/map/', desc: '列出设备上的实际地图文件名；先执行此命令，再复制需要操作的文件名' },
+      { cmd: 'adb pull /sdcard/pudu/map/<地图文件名> ./', desc: '将指定地图拉取到当前电脑目录' },
+      { cmd: 'adb push <本地地图路径> /sdcard/pudu/map/', desc: '推送地图到设备；同名文件会被覆盖' },
+      { cmd: 'adb shell rm -rf /sdcard/pudu/map/<地图文件名>', desc: '删除指定地图；执行前重新确认文件名，删除后不可恢复' },
+    ],
+  },
 ];
 
 // ── 设备特定信息 ────────────────────────────────────────────
@@ -312,8 +333,9 @@ export const TEST_SUMMARY = {
     { name: '应用管理', total: 9, passed: 7, root: 0, untested: 2 },
     { name: '日志与调试', total: 6, passed: 6, root: 0, untested: 0 },
     { name: '文件操作', total: 8, passed: 8, root: 0, untested: 0 },
+    { name: '地图管理', total: 3, passed: 0, root: 0, untested: 3 },
     { name: '屏幕与输入', total: 6, passed: 6, root: 0, untested: 0 },
-    { name: '系统控制', total: 3, passed: 0, root: 0, untested: 3 },
+    { name: '系统控制', total: 4, passed: 0, root: 0, untested: 4 },
   ],
 };
 

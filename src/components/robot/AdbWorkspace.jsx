@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Check, Clipboard, Copy, FileText, HardDrive, Network, Search, Terminal, Workflow, X } from 'lucide-react';
+import { Check, ChevronDown, Clipboard, Copy, FileText, HardDrive, Network, Search, Terminal, Workflow, X } from 'lucide-react';
 import AdbCommandCard from './AdbCommandCard';
 import ExecutionHistory from './ExecutionHistory';
 import DangerConfirmModal from './DangerConfirmModal';
@@ -20,6 +20,7 @@ export default function AdbWorkspace({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('全部');
   const [copiedKey, setCopiedKey] = useState('');
+  const [expandedFlowId, setExpandedFlowId] = useState(null);
 
   const categories = useMemo(() => ['全部', ...new Set(commands.map((command) => command.category))], [commands]);
   const filteredReferences = commands.filter((command) => {
@@ -71,7 +72,19 @@ export default function AdbWorkspace({
   const renderFlows = () => (
     <div className="space-y-5">
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {TROUBLESHOOTING_FLOWS.map((flow) => { const Icon = flow.icon; return <article key={flow.id} className="rounded-xl border border-slate-200 bg-white/70 p-4"><div className="flex items-center gap-2 mb-3"><Icon size={17} className="text-orange-500" /><h3 className="font-semibold text-slate-700">{flow.title}</h3></div><div className="space-y-3 border-l-2 border-orange-100 pl-4">{flow.steps.map((step, index) => <div key={`${flow.id}-${index}`} className="flex items-start justify-between gap-2"><div><code className="text-xs text-slate-700 break-all">{step.cmd}</code><p className="mt-1 text-xs text-slate-400">{step.desc}</p></div><button type="button" onClick={() => copyCommand(step.cmd, `${flow.id}-${index}`)} className="shrink-0 p-1 text-slate-400 hover:text-blue-600" title="复制命令">{copiedKey === `${flow.id}-${index}` ? <Check size={15} /> : <Copy size={15} />}</button></div>)}</div></article>; })}
+        {TROUBLESHOOTING_FLOWS.map((flow) => {
+          const Icon = flow.icon;
+          const isExpanded = expandedFlowId === flow.id;
+          return (
+            <article key={flow.id} className="rounded-xl border border-slate-200 bg-white/70">
+              <button type="button" onClick={() => setExpandedFlowId(isExpanded ? null : flow.id)} className="flex w-full items-center justify-between gap-3 p-4 text-left hover:bg-slate-50">
+                <span className="flex items-center gap-2"><Icon size={17} className="text-orange-500" /><span className="font-semibold text-slate-700">{flow.title}</span></span>
+                <ChevronDown size={17} className={`shrink-0 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+              </button>
+              {isExpanded ? <div className="space-y-3 border-t border-slate-200 px-4 py-4"><div className="border-l-2 border-orange-100 pl-4 space-y-3">{flow.steps.map((step, index) => <div key={`${flow.id}-${index}`} className="flex items-start justify-between gap-2"><div><code className="text-xs text-slate-700 break-all">{step.cmd}</code><p className="mt-1 text-xs text-slate-400">{step.desc}</p></div><button type="button" onClick={() => copyCommand(step.cmd, `${flow.id}-${index}`)} className="shrink-0 p-1 text-slate-400 hover:text-blue-600" title="复制命令">{copiedKey === `${flow.id}-${index}` ? <Check size={15} /> : <Copy size={15} />}</button></div>)}</div></div> : null}
+            </article>
+          );
+        })}
       </div>
       <section className="rounded-xl border border-slate-200 bg-white/70 p-4"><h3 className="font-semibold text-slate-700">日志关键词</h3><div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">{LOG_FILTER_KEYWORDS.map(({ keyword, desc }) => <button key={keyword} type="button" onClick={() => copyCommand(`adb logcat | grep -i "${keyword}"`, `log-${keyword}`)} className="rounded-lg bg-slate-50 px-3 py-2 text-left hover:bg-blue-50"><code className="text-xs text-purple-600">{keyword}</code><span className="block mt-1 text-[11px] text-slate-400">{desc}</span></button>)}</div></section>
     </div>
