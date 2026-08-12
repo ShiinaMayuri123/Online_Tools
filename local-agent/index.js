@@ -13,8 +13,10 @@ import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import { spawn, exec } from 'child_process';
 import crypto from 'crypto';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
+import multer from 'multer';
+import { ZipArchive } from 'archiver';
+import { createReadStream, createWriteStream, existsSync, lstatSync, mkdirSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from 'fs';
+import { basename, dirname, join, posix, relative, resolve } from 'path';
 import { findAdb, checkAdbAvailable } from './adb-finder.js';
 import { findAvailablePort, DEFAULT_PORT } from './port-finder.js';
 
@@ -25,6 +27,19 @@ const runtimeDir = process.pkg ? dirname(process.execPath) : __dirname;
 const DIST_DIR = process.pkg ? join(runtimeDir, 'frontend-dist') : join(__dirname, '..', 'dist');
 const TOKEN_FILE = join(runtimeDir, 'agent.token');
 const ALLOWED_ORIGINS = ['*']; // 开发时允许所有来源，生产环境改为你的域名
+const FILE_ROOT = '/sdcard';
+const MUTATION_ROOTS = ['/sdcard/pudu', '/sdcard/PuduRobotMap', '/sdcard/PuduRobotLog', '/sdcard/pdconfig'];
+const TRANSFER_ROOT = join(runtimeDir, 'adb-transfers');
+const TRANSFER_TTL_MS = 30 * 60 * 1000;
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024;
+const AGENT_VERSION = '1.1.0';
+const AGENT_PROTOCOL_VERSION = 1;
+const PROTOCOL_START = process.argv.includes('--protocol-start');
+const NO_BROWSER = process.argv.includes('--no-browser');
+const transferTasks = new Map();
+const transferFiles = new Map();
+
+mkdirSync(TRANSFER_ROOT, { recursive: true });
 
 // ============ Token 管理 ============
 
@@ -70,6 +85,7 @@ console.log(`[ADB] 使用路径: ${adbPath}`);
 // ============ Express 应用 ============
 
 const app = express();
+let wss = null;
 app.use(express.json());
 
 // CORS 中间件
@@ -78,7 +94,8 @@ app.use((req, res, next) => {
   if (ALLOWED_ORIGINS.includes('*') || ALLOWED_ORIGINS.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin || '*');
     res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition,Content-Length');
   }
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
@@ -109,16 +126,36 @@ function runAdb(args, options = {}) {
   return new Promise((resolve, reject) => {
     const proc = spawn(adbPath, args, { shell: false });
     let stdout = '', stderr = '';
+    let settled = false;
+    let timeoutId;
+
+    options.onProcess?.(proc);
 
     proc.stdout.on('data', d => stdout += d.toString());
-    proc.stderr.on('data', d => stderr += d.toString());
+    proc.stderr.on('data', d => {
+      const text = d.toString();
+      stderr += text;
+      options.onStderr?.(text);
+    });
 
-    proc.on('close', code => resolve({ stdout, stderr, code }));
-    proc.on('error', err => reject(err));
+    proc.on('close', code => {
+      if (settled) return;
+      settled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      resolve({ stdout, stderr, code });
+    });
+    proc.on('error', err => {
+      if (settled) return;
+      settled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      reject(err);
+    });
 
     // 超时处理
     if (options.timeout) {
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
+        if (settled) return;
+        settled = true;
         proc.kill('SIGKILL');
         reject(new Error('命令执行超时'));
       }, options.timeout);
@@ -157,13 +194,272 @@ function parseCommand(command) {
   return command.split(/\s+/).filter(Boolean);
 }
 
+function safeRemove(target) {
+  try {
+    rmSync(target, { recursive: true, force: true });
+  } catch (error) {
+    console.warn(`[ADB] 清理临时文件失败: ${error.message}`);
+  }
+}
+
+function normalizeRemotePath(value) {
+  if (typeof value !== 'string' || !value.trim() || value.includes('\0') || value.includes('\\')) {
+    throw new Error('路径格式无效');
+  }
+  const input = value.trim();
+  if (!input.startsWith('/') || input.split('/').some(part => part === '..' || part === '.')) {
+    throw new Error('路径格式无效');
+  }
+  const normalized = posix.normalize(input);
+  if (normalized !== FILE_ROOT && !normalized.startsWith(`${FILE_ROOT}/`)) {
+    throw new Error('路径不在 /sdcard 范围内');
+  }
+  return normalized;
+}
+
+function isWithinRoot(target, root) {
+  return target === root || target.startsWith(`${root}/`);
+}
+
+function assertMutationPath(value, allowRoot = false) {
+  const target = normalizeRemotePath(value);
+  const allowed = MUTATION_ROOTS.some(root => isWithinRoot(target, root));
+  if (!allowed || (!allowRoot && MUTATION_ROOTS.includes(target))) {
+    throw new Error('路径不在允许修改的范围内');
+  }
+  return target;
+}
+
+function validateDevice(value) {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string' || !/^[A-Za-z0-9._:-]+$/.test(value)) {
+    throw new Error('设备序列号格式无效');
+  }
+  return value;
+}
+
+async function resolveDevice(value) {
+  const requested = validateDevice(value);
+  if (requested) return requested;
+  const { stdout } = await runAdb(['devices']);
+  const devices = stdout
+    .split(/\r?\n/)
+    .map(line => line.trim().split(/\s+/))
+    .filter(parts => parts.length >= 2 && parts[1] === 'device')
+    .map(parts => parts[0]);
+  if (devices.length !== 1) {
+    throw new Error(devices.length === 0 ? '没有可用的 ADB 设备' : '检测到多台设备，请先选择目标设备');
+  }
+  return devices[0];
+}
+
+function adbArgs(device, args) {
+  return ['-s', device, ...args];
+}
+
+async function assertNoSymlinkAncestors(target, device) {
+  const segments = target.split('/').filter(Boolean);
+  let current = '';
+  for (const segment of segments) {
+    current += `/${segment}`;
+    const result = await runAdb(adbArgs(device, ['shell', 'ls', '-ld', current]), { timeout: 10000 });
+    if (result.code !== 0) throw new Error(result.stderr.trim() || `无法访问 ${current}`);
+    const line = result.stdout.trim().split(/\r?\n/).find(Boolean) || '';
+    if (line.startsWith('l') && current !== FILE_ROOT) throw new Error('路径包含符号链接，已拒绝操作');
+  }
+}
+
+function parseLsLine(line) {
+  const normalized = line.trim();
+  if (!normalized || normalized.startsWith('total ')) return null;
+  const match = normalized.match(/^([bcdlps-][rwx-]{9})\s+\S+\s+\S+\s+\S+\s+(\d+)\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}(?::\d{2})?)\s+(.+)$/);
+  if (!match) return null;
+  const [, perm, size, date, time, rawName] = match;
+  const name = rawName.split(' -> ')[0];
+  if (name === '.' || name === '..') return null;
+  return {
+    name,
+    type: perm[0] === 'd' ? 'dir' : perm[0] === 'l' ? 'link' : 'file',
+    size: Number(size),
+    mtime: `${date} ${time}`,
+    perm,
+  };
+}
+
+async function listRemoteDirectory(path, device) {
+  await assertNoSymlinkAncestors(path, device);
+  const listPath = path === FILE_ROOT ? `${path}/` : path;
+  const result = await runAdb(adbArgs(device, ['shell', 'ls', '-lan', listPath]), { timeout: 30000 });
+  if (result.code !== 0) throw new Error(result.stderr.trim() || '读取目录失败');
+  return result.stdout.split(/\r?\n/).map(parseLsLine).filter(Boolean);
+}
+
+async function getRemoteType(path, device) {
+  if (path === FILE_ROOT) return 'dir';
+  const result = await runAdb(adbArgs(device, ['shell', 'ls', '-ld', path]), { timeout: 10000 });
+  if (result.code !== 0) throw new Error(result.stderr.trim() || '目标不存在');
+  const line = result.stdout.trim().split(/\r?\n/).find(Boolean) || '';
+  if (line.startsWith('d')) return 'dir';
+  if (line.startsWith('l')) return 'link';
+  return 'file';
+}
+
+function createTransfer(type, device, label) {
+  const task = {
+    id: crypto.randomUUID(),
+    type,
+    device,
+    label,
+    status: 'queued',
+    progress: null,
+    phase: '等待执行',
+    message: '',
+    fileId: null,
+    fileName: null,
+    error: null,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    proc: null,
+    cleanupPaths: [],
+  };
+  transferTasks.set(task.id, task);
+  broadcastTransfer(task);
+  return task;
+}
+
+function updateTransfer(task, patch) {
+  Object.assign(task, patch, { updatedAt: Date.now() });
+  broadcastTransfer(task);
+}
+
+function publicTransfer(task) {
+  return {
+    taskId: task.id,
+    type: task.type,
+    label: task.label,
+    status: task.status,
+    progress: task.progress,
+    phase: task.phase,
+    message: task.message,
+    fileId: task.fileId,
+    fileName: task.fileName,
+    error: task.error,
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt,
+  };
+}
+
+function broadcastTransfer(task) {
+  if (!wss) return;
+  const message = JSON.stringify({ type: 'transfer', data: publicTransfer(task) });
+  wss.clients.forEach(client => {
+    if (client.readyState === 1) client.send(message);
+  });
+}
+
+function registerTransferFile(task, filePath, fileName) {
+  const fileId = crypto.randomUUID();
+  transferFiles.set(fileId, { fileId, filePath, fileName, taskId: task.id, expiresAt: Date.now() + TRANSFER_TTL_MS });
+  task.fileId = fileId;
+  task.fileName = fileName;
+}
+
+function zipDirectory(sourcePath, destinationPath) {
+  return new Promise((resolveZip, rejectZip) => {
+    const output = createWriteStream(destinationPath);
+    const archive = new ZipArchive({ zlib: { level: 6 } });
+    output.on('close', resolveZip);
+    archive.on('error', rejectZip);
+    archive.pipe(output);
+    archive.directory(sourcePath, false);
+    archive.finalize();
+  });
+}
+
+function cleanExpiredTransfers() {
+  const now = Date.now();
+  transferFiles.forEach((file, fileId) => {
+    if (file.expiresAt <= now) {
+      safeRemove(file.filePath);
+      transferFiles.delete(fileId);
+    }
+  });
+  transferTasks.forEach((task, taskId) => {
+    if (task.status !== 'running' && now - task.updatedAt > TRANSFER_TTL_MS) {
+      task.cleanupPaths.forEach(safeRemove);
+      transferTasks.delete(taskId);
+    }
+  });
+}
+
+setInterval(cleanExpiredTransfers, 5 * 60 * 1000).unref();
+
+function sanitizeFilename(value) {
+  const name = String(value || '').replace(/^.*[\\/]/, '').replace(/[\0\r\n]/g, '').trim();
+  if (!name || name === '.' || name === '..' || name.length > 180) {
+    throw new Error('文件名无效');
+  }
+  return name;
+}
+
+function createTransferDirectory(task) {
+  const taskDir = join(TRANSFER_ROOT, task.id);
+  mkdirSync(taskDir, { recursive: true });
+  task.cleanupPaths.push(taskDir);
+  return taskDir;
+}
+
+function updateProgressFromOutput(task, text) {
+  const match = text.match(/(\d{1,3})%/);
+  if (match) updateTransfer(task, { progress: Math.min(100, Number(match[1])), message: text.trim() });
+}
+
+async function runTransferAdb(task, args, phase) {
+  updateTransfer(task, { status: 'running', phase, progress: 0, error: null });
+  const result = await runAdb(args, {
+    timeout: 30 * 60 * 1000,
+    onProcess: proc => { task.proc = proc; },
+    onStderr: text => updateProgressFromOutput(task, text),
+  });
+  task.proc = null;
+  if (task.status === 'cancelled') throw new Error('传输已取消');
+  if (result.code !== 0) throw new Error(result.stderr.trim() || result.stdout.trim() || 'ADB 传输失败');
+  return result;
+}
+
+function sendRouteError(res, error, fallbackStatus = 400) {
+  const message = error instanceof Error ? error.message : String(error);
+  const status = message.includes('不在允许') || message.includes('符号链接') ? 403 : fallbackStatus;
+  res.status(status).json({ success: false, error: message });
+}
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, callback) => {
+      const uploadDir = join(TRANSFER_ROOT, `upload-${crypto.randomUUID()}`);
+      mkdirSync(uploadDir, { recursive: true });
+      req.uploadDir = uploadDir;
+      callback(null, uploadDir);
+    },
+    filename: (req, file, callback) => {
+      try {
+        callback(null, `${crypto.randomUUID()}-${sanitizeFilename(file.originalname)}`);
+      } catch (error) {
+        callback(error);
+      }
+    },
+  }),
+  limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 },
+});
+
 // ============ API 路由 ============
 
 // 健康检查（无需认证）
 app.get('/health', (req, res) => {
   res.json({
     ok: true,
-    version: '1.0.0',
+    version: AGENT_VERSION,
+    protocolVersion: AGENT_PROTOCOL_VERSION,
     adbPath,
     port: server.address()?.port
   });
@@ -252,6 +548,238 @@ app.post('/adb/exec', checkAuth, async (req, res) => {
     res.json({ success: true, stdout, stderr, code });
   } catch (error) {
     res.json({ success: false, error: error.message });
+  }
+});
+
+// 文件管理器：读取实时目录
+app.post('/adb/ls', checkAuth, async (req, res) => {
+  try {
+    const path = normalizeRemotePath(req.body?.path);
+    const device = await resolveDevice(req.body?.device);
+    if (await getRemoteType(path, device) !== 'dir') {
+      return res.status(400).json({ success: false, error: '目标不是目录' });
+    }
+    const entries = await listRemoteDirectory(path, device);
+    res.json({ success: true, path, entries, device });
+  } catch (error) {
+    sendRouteError(res, error);
+  }
+});
+
+// 文件管理器：删除文件或目录
+app.post('/adb/rm', checkAuth, async (req, res) => {
+  try {
+    const path = assertMutationPath(req.body?.path);
+    if (req.body?.confirmTarget !== path) {
+      return res.status(409).json({ success: false, requiresConfirmation: true, target: path, error: '请确认完整目标路径' });
+    }
+    const device = await resolveDevice(req.body?.device);
+    await assertNoSymlinkAncestors(path, device);
+    const type = await getRemoteType(path, device);
+    const command = type === 'dir' ? ['shell', 'rm', '-rf', path] : ['shell', 'rm', '-f', path];
+    const result = await runAdb(adbArgs(device, command), { timeout: 60 * 1000 });
+    const success = result.code === 0;
+    res.status(success ? 200 : 502).json({ success, ...result, error: success ? undefined : result.stderr.trim() || '删除失败' });
+  } catch (error) {
+    sendRouteError(res, error);
+  }
+});
+
+// 文件管理器：创建拉取任务，目录会自动打包为 ZIP
+app.post('/adb/pull', checkAuth, async (req, res) => {
+  try {
+    const remotePath = normalizeRemotePath(req.body?.remotePath || req.body?.path);
+    const device = await resolveDevice(req.body?.device);
+    await assertNoSymlinkAncestors(remotePath, device);
+    const type = await getRemoteType(remotePath, device);
+    if (type === 'link') throw new Error('暂不支持拉取符号链接');
+
+    const task = createTransfer('pull', device, remotePath);
+    const taskDir = createTransferDirectory(task);
+    void (async () => {
+      try {
+        await runTransferAdb(task, adbArgs(device, ['pull', remotePath, taskDir]), '从设备拉取');
+        const itemName = sanitizeFilename(basename(remotePath));
+        const pulledPath = join(taskDir, itemName);
+        if (!existsSync(pulledPath)) throw new Error('ADB 拉取完成，但未找到本地文件');
+        let artifactPath = pulledPath;
+        let artifactName = itemName;
+        if (type === 'dir') {
+          updateTransfer(task, { phase: '打包目录', progress: null });
+          artifactName = `${itemName}.zip`;
+          artifactPath = join(taskDir, artifactName);
+          await zipDirectory(pulledPath, artifactPath);
+        }
+        registerTransferFile(task, artifactPath, artifactName);
+        updateTransfer(task, { status: 'completed', phase: '已完成', progress: 100, message: '文件已准备下载' });
+      } catch (error) {
+        if (task.status !== 'cancelled') updateTransfer(task, { status: 'failed', phase: '失败', error: error.message });
+      } finally {
+        task.proc = null;
+        if (task.status === 'failed' || task.status === 'cancelled') task.cleanupPaths.forEach(safeRemove);
+      }
+    })();
+    res.status(202).json({ success: true, taskId: task.id, device });
+  } catch (error) {
+    sendRouteError(res, error);
+  }
+});
+
+// 文件管理器：查询传输任务
+app.get('/adb/transfer/:taskId', checkAuth, (req, res) => {
+  const task = transferTasks.get(req.params.taskId);
+  if (!task) return res.status(404).json({ success: false, error: '传输任务不存在或已过期' });
+  res.json({ success: true, data: publicTransfer(task) });
+});
+
+// 文件管理器：取消传输任务
+app.delete('/adb/transfer/:taskId', checkAuth, (req, res) => {
+  const task = transferTasks.get(req.params.taskId);
+  if (!task) return res.status(404).json({ success: false, error: '传输任务不存在或已过期' });
+  if (task.status === 'running' && task.proc) task.proc.kill('SIGKILL');
+  if (task.status === 'queued' || task.status === 'running') {
+    updateTransfer(task, { status: 'cancelled', phase: '已取消', message: '用户取消了传输' });
+    task.cleanupPaths.forEach(safeRemove);
+  }
+  res.json({ success: true, data: publicTransfer(task) });
+});
+
+// 文件管理器：下载已完成的临时文件
+app.get('/adb/file', checkAuth, (req, res) => {
+  const artifact = transferFiles.get(req.query.fileId);
+  if (!artifact || artifact.expiresAt <= Date.now()) {
+    return res.status(404).json({ success: false, error: '文件不存在或已过期' });
+  }
+  const root = resolve(TRANSFER_ROOT);
+  const target = resolve(artifact.filePath);
+  const relativeTarget = relative(root, target);
+  if (relativeTarget.startsWith('..') || relativeTarget.includes(':')) {
+    return res.status(403).json({ success: false, error: '文件路径无效' });
+  }
+  try {
+    const size = statSync(target).size;
+    const asciiName = artifact.fileName.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_');
+    const encodedName = encodeURIComponent(artifact.fileName);
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Length', size);
+    res.setHeader('Content-Disposition', `attachment; filename="${asciiName}"; filename*=UTF-8''${encodedName}`);
+    const stream = createReadStream(target);
+    stream.on('error', error => {
+      if (!res.headersSent) res.status(500).json({ success: false, error: error.message });
+    });
+    stream.on('close', () => {
+      safeRemove(target);
+      transferFiles.delete(artifact.fileId);
+    });
+    stream.pipe(res);
+  } catch (error) {
+    transferFiles.delete(artifact.fileId);
+    sendRouteError(res, error, 404);
+  }
+});
+
+const uploadSingle = (req, res, next) => upload.single('file')(req, res, error => {
+  if (error) return sendRouteError(res, error, error.code === 'LIMIT_FILE_SIZE' ? 413 : 400);
+  next();
+});
+
+// 文件管理器：上传文件并创建推送任务
+app.post('/adb/push', checkAuth, uploadSingle, async (req, res) => {
+  try {
+    const remoteDir = assertMutationPath(req.body?.remoteDir, true);
+    if (!req.file) return res.status(400).json({ success: false, error: '请选择要推送的文件' });
+    const device = await resolveDevice(req.body?.device);
+    await assertNoSymlinkAncestors(remoteDir, device);
+    if (await getRemoteType(remoteDir, device) !== 'dir') throw new Error('推送目标不是目录');
+
+    const fileName = sanitizeFilename(req.file.originalname);
+    const remotePath = `${remoteDir}/${fileName}`;
+    let exists = false;
+    try {
+      await getRemoteType(remotePath, device);
+      exists = true;
+    } catch {
+      exists = false;
+    }
+    if (exists && req.body?.confirmTarget !== remotePath) {
+      safeRemove(req.uploadDir);
+      return res.status(409).json({ success: false, requiresConfirmation: true, target: remotePath, error: '目标文件已存在，请确认覆盖' });
+    }
+
+    const task = createTransfer('push', device, remotePath);
+    task.cleanupPaths.push(req.uploadDir);
+    void (async () => {
+      try {
+        await runTransferAdb(task, adbArgs(device, ['push', req.file.path, remoteDir]), '推送到设备');
+        updateTransfer(task, { status: 'completed', phase: '已完成', progress: 100, message: exists ? '已覆盖原文件' : '文件已推送' });
+      } catch (error) {
+        if (task.status !== 'cancelled') updateTransfer(task, { status: 'failed', phase: '失败', error: error.message });
+      } finally {
+        task.proc = null;
+        task.cleanupPaths.forEach(safeRemove);
+      }
+    })();
+    res.status(202).json({ success: true, taskId: task.id, target: remotePath, device });
+  } catch (error) {
+    if (req.uploadDir) safeRemove(req.uploadDir);
+    sendRouteError(res, error);
+  }
+});
+
+function validatePackageName(value) {
+  if (typeof value !== 'string' || !/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/.test(value)) {
+    throw new Error('包名格式无效');
+  }
+  return value;
+}
+
+async function executeStructuredAdb(deviceValue, args) {
+  const device = await resolveDevice(deviceValue);
+  const result = await runAdb(adbArgs(device, args), { timeout: 60 * 1000 });
+  return { device, ...result, success: result.code === 0 };
+}
+
+// 文件管理器：读取已安装应用
+app.post('/adb/packages', checkAuth, async (req, res) => {
+  try {
+    const result = await executeStructuredAdb(req.body?.device, ['shell', 'pm', 'list', 'packages']);
+    const packages = result.stdout.split(/\r?\n/).map(line => line.replace(/^package:/, '').trim()).filter(Boolean);
+    res.status(result.success ? 200 : 502).json({ success: result.success, packages, device: result.device, error: result.success ? undefined : result.stderr.trim() });
+  } catch (error) {
+    sendRouteError(res, error);
+  }
+});
+
+// 文件管理器：应用卸载、清除数据、强制停止
+app.post('/adb/uninstall', checkAuth, async (req, res) => {
+  try {
+    const packageName = validatePackageName(req.body?.package);
+    if (req.body?.confirmTarget !== packageName) return res.status(409).json({ success: false, requiresConfirmation: true, target: packageName, error: '请确认完整包名' });
+    const result = await executeStructuredAdb(req.body?.device, ['shell', 'pm', 'uninstall', ...(req.body?.keepData ? ['-k'] : []), packageName]);
+    res.status(result.success ? 200 : 502).json(result);
+  } catch (error) {
+    sendRouteError(res, error);
+  }
+});
+
+app.post('/adb/app-clear', checkAuth, async (req, res) => {
+  try {
+    const packageName = validatePackageName(req.body?.package);
+    if (req.body?.confirmTarget !== packageName) return res.status(409).json({ success: false, requiresConfirmation: true, target: packageName, error: '请确认完整包名' });
+    const result = await executeStructuredAdb(req.body?.device, ['shell', 'pm', 'clear', packageName]);
+    res.status(result.success ? 200 : 502).json(result);
+  } catch (error) {
+    sendRouteError(res, error);
+  }
+});
+
+app.post('/adb/app-force-stop', checkAuth, async (req, res) => {
+  try {
+    const packageName = validatePackageName(req.body?.package);
+    const result = await executeStructuredAdb(req.body?.device, ['shell', 'am', 'force-stop', packageName]);
+    res.status(result.success ? 200 : 502).json(result);
+  } catch (error) {
+    sendRouteError(res, error);
   }
 });
 
@@ -476,7 +1004,7 @@ app.post('/adb/device-info/scan', checkAuth, async (req, res) => {
 // ============ WebSocket ============
 
 const server = createServer(app);
-const wss = new WebSocketServer({ server, path: '/ws' });
+wss = new WebSocketServer({ server, path: '/ws' });
 
 wss.on('connection', (ws, req) => {
   // 验证 Token
@@ -594,17 +1122,18 @@ async function start() {
     console.log(`  WebSocket: ws://127.0.0.1:${actualPort}/ws`);
     console.log(`  API Token: ${API_TOKEN}`);
     console.log('========================================');
+    if (!PROTOCOL_START && !NO_BROWSER) {
+      try {
+        const url = hasFrontend
+          ? `http://127.0.0.1:${actualPort}/`
+          : `http://127.0.0.1:${actualPort}/setup`;
+        exec(`start ${url}`);
+      } catch (e) {
+        // 忽略打开浏览器失败
+      }
+    }
     console.log('\n请将上方 Token 复制到网页上进行配对\n');
 
-    // 尝试打开浏览器
-    try {
-      const url = hasFrontend
-        ? `http://127.0.0.1:${actualPort}/`
-        : `http://127.0.0.1:${actualPort}/setup`;
-      exec(`start ${url}`);
-    } catch (e) {
-      // 忽略打开浏览器失败
-    }
   });
 }
 

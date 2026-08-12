@@ -34,6 +34,7 @@ desktop.ini
 .firebase/
 coverage/
 .nyc_output/
+/adb-transfers/
 
 # Credentials and certificates
 *.token
