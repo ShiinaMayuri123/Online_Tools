@@ -15,7 +15,55 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build-agent:
+    runs-on: windows-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: local-agent/package-lock.json
+
+      - name: 准备 Android Platform Tools
+        shell: powershell
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'platform-tools.zip'
+          $extract = Join-Path $env:RUNNER_TEMP 'platform-tools'
+          Invoke-WebRequest -Uri 'https://dl.google.com/android/repository/platform-tools-latest-windows.zip' -OutFile $archive
+          Expand-Archive -Path $archive -DestinationPath $extract -Force
+          $platformTools = Join-Path $extract 'platform-tools'
+          Copy-Item (Join-Path $platformTools 'adb.exe') 'local-agent\adb.exe' -Force
+          Copy-Item (Join-Path $platformTools 'AdbWin*.dll') 'local-agent\' -Force
+
+      - name: 安装助手依赖
+        working-directory: local-agent
+        run: npm ci
+
+      - name: 构建助手
+        working-directory: local-agent
+        run: npm run build
+
+      - name: 安装 Inno Setup
+        shell: powershell
+        run: choco install innosetup --no-progress -y
+
+      - name: 构建安装器
+        shell: powershell
+        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "local-agent\installer\adb-agent.iss"'
+
+      - name: 上传网站下载文件
+        uses: actions/upload-artifact@v4
+        with:
+          name: adb-agent-installer
+          path: local-agent/dist/adb-agent-setup.exe
+          if-no-files-found: error
+
   build-and-deploy:
+    needs: build-agent
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -32,6 +80,12 @@ jobs:
 
       - name: 安装依赖
         run: npm ci
+
+      - name: 放置助手安装包
+        uses: actions/download-artifact@v4
+        with:
+          name: adb-agent-installer
+          path: public/downloads
 
       - name: 构建
         run: npm run build
