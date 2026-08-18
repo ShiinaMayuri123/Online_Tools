@@ -6,7 +6,6 @@ await build({
   platform: 'node',
   format: 'cjs',
   target: 'node18',
-  packages: 'external',
   outfile: 'build/index.cjs',
 });
 

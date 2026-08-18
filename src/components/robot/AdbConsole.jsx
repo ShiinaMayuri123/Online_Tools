@@ -7,6 +7,17 @@ import AdbWorkspace from './AdbWorkspace';
 const AGENT_PORTS = [5038, 5039, 5040, 12553, 12554, 12555, 3001];
 const AGENT_INSTALL_HINT_KEY = 'adb_agent_install_hint';
 const AGENT_VERSION_KEY = 'adb_local_agent_version';
+const FILE_MANAGER_CAPABILITY = 'file-manager';
+
+const compareVersions = (left = '', right = '') => {
+  const parse = (version) => String(version).replace(/^v/i, '').split('.').map((part) => Number.parseInt(part, 10) || 0);
+  const a = parse(left);
+  const b = parse(right);
+  for (let index = 0; index < Math.max(a.length, b.length); index += 1) {
+    if ((a[index] || 0) !== (b[index] || 0)) return (a[index] || 0) - (b[index] || 0);
+  }
+  return 0;
+};
 
 async function detectLocalAgent(timeoutMs = 500) {
   const probes = await Promise.all(AGENT_PORTS.map(async (port) => {
@@ -30,12 +41,18 @@ async function detectLocalAgent(timeoutMs = 500) {
         token: tokenData.token || '',
         version: health.version || '',
         protocolVersion: health.protocolVersion || 0,
+        capabilities: Array.isArray(health.capabilities) ? health.capabilities : [],
       };
     } catch {
       return null;
     }
   }));
-  return probes.find(Boolean) || null;
+  return probes.filter(Boolean).sort((left, right) => {
+    const leftSupportsFiles = left.capabilities.includes(FILE_MANAGER_CAPABILITY);
+    const rightSupportsFiles = right.capabilities.includes(FILE_MANAGER_CAPABILITY);
+    if (leftSupportsFiles !== rightSupportsFiles) return rightSupportsFiles ? 1 : -1;
+    return compareVersions(right.version, left.version);
+  })[0] || null;
 }
 
 function getInitialToken() {
@@ -75,6 +92,7 @@ export default function AdbConsole() {
   const mountedRef = useRef(true);
   const [agentBaseUrl, setAgentBaseUrl] = useState(null);
   const [agentToken, setAgentToken] = useState(getInitialToken);
+  const [agentCapabilities, setAgentCapabilities] = useState([]);
   const [agentDetecting, setAgentDetecting] = useState(true);
   const [agentVersion, setAgentVersion] = useState(() => localStorage.getItem(AGENT_VERSION_KEY) || '');
   const [agentManifest, setAgentManifest] = useState(null);
@@ -159,6 +177,7 @@ export default function AdbConsole() {
     const baseUrl = agent?.baseUrl || null;
     const token = agent?.token || '';
     setAgentBaseUrl(baseUrl);
+    setAgentCapabilities(agent?.capabilities || []);
     setAgentVersion(agent?.version || '');
     setAgentLaunchState(baseUrl ? 'connected' : 'idle');
     if (agent?.version) localStorage.setItem(AGENT_VERSION_KEY, agent.version);
@@ -331,6 +350,7 @@ export default function AdbConsole() {
     connecting={connecting}
     agentBaseUrl={agentBaseUrl}
     agentToken={agentToken}
+    agentCapabilities={agentCapabilities}
     agentDetecting={agentDetecting}
     agentVersion={agentVersion}
     agentManifest={agentManifest}

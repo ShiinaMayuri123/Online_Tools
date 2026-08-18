@@ -34,6 +34,7 @@ const TRANSFER_TTL_MS = 30 * 60 * 1000;
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024;
 const AGENT_VERSION = '1.1.0';
 const AGENT_PROTOCOL_VERSION = 1;
+const AGENT_CAPABILITIES = ['file-manager'];
 const PROTOCOL_START = process.argv.includes('--protocol-start');
 const NO_BROWSER = process.argv.includes('--no-browser');
 const transferTasks = new Map();
@@ -288,7 +289,7 @@ function parseLsLine(line) {
 
 async function listRemoteDirectory(path, device) {
   await assertNoSymlinkAncestors(path, device);
-  const listPath = path === FILE_ROOT ? `${path}/` : path;
+  const listPath = path === FILE_ROOT ? `${path}/.` : path;
   const result = await runAdb(adbArgs(device, ['shell', 'ls', '-lan', listPath]), { timeout: 30000 });
   if (result.code !== 0) throw new Error(result.stderr.trim() || '读取目录失败');
   return result.stdout.split(/\r?\n/).map(parseLsLine).filter(Boolean);
@@ -460,6 +461,7 @@ app.get('/health', (req, res) => {
     ok: true,
     version: AGENT_VERSION,
     protocolVersion: AGENT_PROTOCOL_VERSION,
+    capabilities: AGENT_CAPABILITIES,
     adbPath,
     port: server.address()?.port
   });
