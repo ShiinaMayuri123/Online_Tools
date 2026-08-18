@@ -1,5 +1,5 @@
 #define MyAppName "Pudu ADB Agent"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "1.1.1"
 #define MyAppPublisher "Pudu"
 #define MyAppExeName "adb-agent.exe"
 

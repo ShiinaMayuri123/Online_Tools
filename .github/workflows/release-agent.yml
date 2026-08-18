@@ -23,6 +23,17 @@ jobs:
           cache: npm
           cache-dependency-path: local-agent/package-lock.json
 
+      - name: Prepare Android Platform Tools
+        shell: powershell
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'platform-tools.zip'
+          $extract = Join-Path $env:RUNNER_TEMP 'platform-tools'
+          Invoke-WebRequest -Uri 'https://dl.google.com/android/repository/platform-tools-latest-windows.zip' -OutFile $archive
+          Expand-Archive -Path $archive -DestinationPath $extract -Force
+          $platformTools = Join-Path $extract 'platform-tools'
+          Copy-Item (Join-Path $platformTools 'adb.exe') 'local-agent\adb.exe' -Force
+          Copy-Item (Join-Path $platformTools 'AdbWin*.dll') 'local-agent\' -Force
+
       - name: Install agent dependencies
         working-directory: local-agent
         run: npm ci

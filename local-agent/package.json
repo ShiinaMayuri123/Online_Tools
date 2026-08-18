@@ -1,6 +1,6 @@
 {
   "name": "adb-local-agent",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "ADB 本地代理 - 在用户本机运行，调用本地 adb.exe",
   "type": "module",
   "main": "index.js",

@@ -1,7 +1,7 @@
 {
-  "latestVersion": "1.1.0",
-  "installerUrl": "https://github.com/ShiinaMayuri123/Online_Tools/releases/download/v1.1.0/adb-agent-setup.exe",
-  "portableUrl": "https://github.com/ShiinaMayuri123/Online_Tools/releases/download/v1.1.0/adb-agent-portable.zip",
+  "latestVersion": "1.1.1",
+  "installerUrl": "https://github.com/ShiinaMayuri123/Online_Tools/releases/download/v1.1.1/adb-agent-setup.exe",
+  "portableUrl": "https://github.com/ShiinaMayuri123/Online_Tools/releases/download/v1.1.1/adb-agent-portable.zip",
   "sha256": "",
-  "releaseNotesUrl": "https://github.com/ShiinaMayuri123/Online_Tools/releases/tag/v1.1.0"
+  "releaseNotesUrl": "https://github.com/ShiinaMayuri123/Online_Tools/releases/tag/v1.1.1"
 }

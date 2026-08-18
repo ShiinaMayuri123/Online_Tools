@@ -48,7 +48,7 @@ export default function AdbWorkspace({
     window.setTimeout(() => setCopiedKey(''), 1200);
   };
 
-  const installerUrl = agentManifest?.installerUrl || 'https://github.com/ShiinaMayuri123/Online_Tools/releases/download/v1.1.0/adb-agent-setup.exe';
+  const installerUrl = agentManifest?.installerUrl || 'https://github.com/ShiinaMayuri123/Online_Tools/releases/download/v1.1.1/adb-agent-setup.exe';
   const latestVersion = agentManifest?.latestVersion || '';
   const upgradeAvailable = Boolean(agentVersion && latestVersion && compareVersions(agentVersion, latestVersion) < 0);
   const supportsFileManager = agentCapabilities.includes('file-manager');
@@ -137,7 +137,7 @@ export default function AdbWorkspace({
           </div>
           <div className="flex min-h-0 flex-col rounded-xl border border-slate-200 bg-white/70 shadow-sm lg:col-span-3 overflow-hidden">
             <div className="flex overflow-x-auto border-b border-slate-200">{tabItems.map(({ id, label, icon: Icon }) => <button key={id} type="button" onClick={() => setActivePanel(activePanel === id ? '' : id)} className={`min-w-[118px] flex-1 border-b-2 px-3 py-3.5 text-base font-bold transition-colors lg:min-w-0 ${activePanel === id ? `border-current ${theme.textAccent} bg-white` : 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}><span className="inline-flex items-center gap-2"><Icon size={17} />{label}</span></button>)}</div>
-            {activePanel ? <div className="min-h-0 flex-1 overflow-y-auto p-4">{activePanel === 'commands' && renderCommands()}{activePanel === 'flows' && renderFlows()}{activePanel === 'data' && renderData()}{activePanel === 'files' && (agentBaseUrl && !supportsFileManager ? <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">当前连接助手版本不支持文件管理，请升级到 {latestVersion || '1.1.0'} 后重新检测。</div> : <FileManager agentBaseUrl={agentBaseUrl} agentToken={agentToken} connectedDevice={connectedDevice} onRecordOperation={onRecordOperation} />)}</div> : <div className="flex min-h-[320px] flex-1 items-center justify-center px-5 text-center text-sm text-slate-400"><div><X className="mx-auto mb-2 text-slate-300" size={22} /><p>选择一个运维模块开始</p></div></div>}
+            {activePanel ? <div className="min-h-0 flex-1 overflow-y-auto p-4">{activePanel === 'commands' && renderCommands()}{activePanel === 'flows' && renderFlows()}{activePanel === 'data' && renderData()}{activePanel === 'files' && (agentBaseUrl && !supportsFileManager ? <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">当前连接助手版本不支持文件管理，请升级到 {latestVersion || '1.1.1'} 后重新检测。</div> : <FileManager agentBaseUrl={agentBaseUrl} agentToken={agentToken} connectedDevice={connectedDevice} onRecordOperation={onRecordOperation} />)}</div> : <div className="flex min-h-[320px] flex-1 items-center justify-center px-5 text-center text-sm text-slate-400"><div><X className="mx-auto mb-2 text-slate-300" size={22} /><p>选择一个运维模块开始</p></div></div>}
           </div>
         </div>
       </section>
