@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 
 /**
  * ParticleBackground: 粒子动画背景组件

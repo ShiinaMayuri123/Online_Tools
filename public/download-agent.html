@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="refresh" content="0; url=/downloads/adb-agent-setup.exe">
   <title>ADB 本地代理 - 获取指南</title>
   <style>
     * {
@@ -158,6 +157,12 @@
       display: block;
       margin-bottom: 8px;
     }
+    #download-status {
+      min-height: 20px;
+      margin-top: 12px;
+      font-size: 14px;
+      color: #856404;
+    }
     .code {
       background: #f1f3f5;
       padding: 2px 8px;
@@ -203,106 +208,61 @@
       它会启动一个本地服务，让网页能够控制你的 Android 设备。
     </p>
 
-    <!-- 前置要求：安装 ADB -->
+    <!-- 正式安装器 -->
     <div class="section section-3">
       <div class="section-header">
         <div class="section-icon">📱</div>
         <div>
-          <h3>前置要求：安装 ADB 工具</h3>
-          <p>在使用本地代理之前，需要先安装 Android SDK Platform Tools</p>
+          <h3>正式安装器（推荐）</h3>
+          <p>安装包内含 ADB 运行所需文件，不需要安装 Node.js，也不需要手动配置 PATH。</p>
         </div>
       </div>
       <div class="steps">
         <div class="step">
           <span class="step-num">1</span>
-          <span>访问 <a href="https://developer.android.com/studio/releases/platform-tools" target="_blank">Android SDK Platform Tools 官方下载页面</a></span>
+          <span>下载并运行 <code class="code">adb-agent-setup.exe</code>。</span>
         </div>
         <div class="step">
           <span class="step-num">2</span>
-          <span>下载 Windows 版本的 Platform Tools</span>
+          <span>可选：下载 <code class="code">SHA256SUMS.txt</code> 比对安装包哈希。</span>
         </div>
         <div class="step">
           <span class="step-num">3</span>
-          <span>解压到任意目录（如 <code class="code">C:\platform-tools</code>）</span>
-        </div>
-        <div class="step">
-          <span class="step-num">4</span>
-          <span>将目录添加到系统 PATH 环境变量，或将 <code class="code">adb.exe</code> 复制到本地代理同目录</span>
+          <span>安装完成后回到 ADB 调试助手，启动助手并按页面提示输入本机 Token。</span>
         </div>
       </div>
       <div class="btn-group">
-        <a href="https://developer.android.com/studio/releases/platform-tools" target="_blank" class="btn btn-success">
-          📥 下载 Platform Tools
-        </a>
+        <button type="button" class="btn btn-success" data-download="/downloads/adb-agent-setup.exe">
+          📥 下载正式安装器
+        </button>
+        <button type="button" class="btn btn-primary" data-download="/downloads/SHA256SUMS.txt">
+          查看 SHA-256
+        </button>
       </div>
+      <p id="download-status" role="status" aria-live="polite"></p>
     </div>
 
-    <!-- 方式一：一键安装（推荐） -->
+    <!-- 开发备用 -->
     <div class="section section-1">
       <div class="section-header">
         <div class="section-icon">⚡</div>
         <div>
-          <h3>方式一：一键安装（推荐）</h3>
-          <p>复制命令到 PowerShell 执行，自动完成所有步骤</p>
+          <h3>开发或现场排障备用</h3>
+          <p>只在无法使用正式安装器时使用，必须固定到已发布的版本标签。</p>
         </div>
       </div>
       <div class="steps">
         <div class="step">
           <span class="step-num">1</span>
-          <span>确保已安装 <a href="https://nodejs.org/" target="_blank">Node.js 18+</a></span>
+          <span>安装 <a href="https://nodejs.org/" target="_blank">Node.js 18+</a>，并从 GitHub Release 下载同一版本的便携包。</span>
         </div>
         <div class="step">
           <span class="step-num">2</span>
-          <span>按 <code class="code">Win + X</code>，选择 <strong>Windows PowerShell</strong></span>
+          <span>解压后将 <code class="code">adb-agent.exe</code> 与 ADB 文件保留在同一目录。</span>
         </div>
         <div class="step">
           <span class="step-num">3</span>
-          <span>复制下方命令，粘贴到 PowerShell 中回车执行</span>
-        </div>
-      </div>
-      <div style="position: relative; margin-top: 12px;">
-        <div id="setup-cmd" style="background: #1a1a2e; color: #a0e0a0; padding: 16px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 14px; word-break: break-all;">irm https://raw.githubusercontent.com/ShiinaMayuri123/Online_Tools/main/local-agent/setup.ps1 | iex</div>
-        <button onclick="copyCmd()" style="position: absolute; top: 8px; right: 8px; background: #333; color: #aaa; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;" id="copy-btn">Copy</button>
-      </div>
-      <script>
-        function copyCmd() {
-          navigator.clipboard.writeText('irm https://raw.githubusercontent.com/ShiinaMayuri123/Online_Tools/main/local-agent/setup.ps1 | iex').then(() => {
-            document.getElementById('copy-btn').textContent = 'Copied!';
-            setTimeout(() => document.getElementById('copy-btn').textContent = 'Copy', 2000);
-          });
-        }
-      </script>
-      <p style="margin-top: 8px; font-size: 13px; color: #888;">
-        💡 This downloads the agent, installs dependencies, and starts it. Next time, double-click <code class="code">start.bat</code>.
-      </p>
-      <div class="btn-group">
-        <a href="https://nodejs.org/" target="_blank" class="btn btn-success">
-          📥 Install Node.js
-        </a>
-      </div>
-    </div>
-
-    <!-- 方式二：手动下载 -->
-    <div class="section section-2">
-      <div class="section-header">
-        <div class="section-icon">🔧</div>
-        <div>
-          <h3>方式二：手动下载</h3>
-          <p>从 GitHub 下载源码，手动运行</p>
-        </div>
-      </div>
-      <div class="steps">
-        <div class="step">
-          <span class="step-num">1</span>
-          <span>下载仓库 ZIP：<a href="https://github.com/ShiinaMayuri123/Online_Tools/archive/refs/heads/main.zip" target="_blank">点击下载</a></span>
-        </div>
-        <div class="step">
-          <span class="step-num">2</span>
-          <span>解压，进入 <code class="code">local-agent</code> 文件夹</span>
-        </div>
-        <div class="step">
-          <span class="step-num">3</span>
-          <span>双击 <code class="code">start.bat</code></span>
+          <span>运行程序，复制控制台显示的 Token 并返回网页配对。</span>
         </div>
       </div>
     </div>
@@ -311,10 +271,10 @@
     <div class="note">
       <strong>⚠️ 注意事项</strong>
       <ul>
-        <li>首次运行可能被 Windows Defender 拦截，点击"更多信息" → "仍要运行"</li>
+        <li>当前安装器尚未签名，Windows SmartScreen 提示需要由发布方配置代码签名证书后才能消除</li>
         <li>防火墙弹窗请选择"允许访问"（专用网络）</li>
         <li>程序只监听 <code class="code">127.0.0.1</code>，安全可靠</li>
-        <li>需要电脑上已安装 ADB 工具（<a href="https://developer.android.com/studio/releases/platform-tools" target="_blank">下载地址</a>）</li>
+        <li>如果下载链接不存在，说明当前站点尚未发布对应版本，请联系发布方完成 GitHub Actions 部署</li>
       </ul>
     </div>
 
@@ -322,7 +282,7 @@
       <strong>💡 使用流程</strong>
       <ol style="margin: 0; padding-left: 20px;">
         <li>下载并运行本地代理程序</li>
-        <li>程序会自动打开配对页面，复制显示的 Token</li>
+        <li>从本地代理窗口复制显示的 Token</li>
         <li>返回 ADB 调试助手页面，粘贴 Token 进行配对</li>
         <li>输入 Android 设备的 IP 地址，点击连接</li>
         <li>开始执行 ADB 命令！</li>
@@ -333,5 +293,31 @@
       <p>返回 <a href="/">首页</a> | <a href="/#/adb">ADB 调试助手</a></p>
     </div>
   </div>
+  <script>
+    const downloadStatus = document.getElementById('download-status');
+
+    async function downloadReleaseFile(button) {
+      const fileUrl = button.dataset.download;
+      button.disabled = true;
+      downloadStatus.textContent = '正在检查发布文件...';
+
+      try {
+        const response = await fetch(fileUrl, { method: 'HEAD', cache: 'no-store' });
+        const contentType = response.headers.get('content-type') || '';
+        if (!response.ok || contentType.includes('text/html')) {
+          throw new Error('发布文件不可用');
+        }
+        window.location.assign(fileUrl);
+      } catch {
+        downloadStatus.textContent = '当前站点尚未发布该文件，请联系发布方完成 GitHub Actions 部署。';
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    document.querySelectorAll('[data-download]').forEach((button) => {
+      button.addEventListener('click', () => downloadReleaseFile(button));
+    });
+  </script>
 </body>
 </html>

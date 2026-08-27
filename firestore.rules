@@ -1,17 +1,37 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // ===== users 集合 =====
-    // 只允许用户读写自己的文档
-    match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
+    function signedIn() {
+      return request.auth != null;
     }
 
-    // ===== testRecords 集合 =====
-    // 只允许已认证用户读写（机器人测试记录管理工具）
+    function isAdmin() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // ===== users 集合 =====
+    // 用户只能维护自己的资料，不能自行提升 role；管理员可管理全部用户。
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == 'user';
+      allow update: if isAdmin()
+        || (signedIn()
+          && request.auth.uid == userId
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
+      allow delete: if signedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // ===== devices / testRecords 集合 =====
+    // 机器人测试工具目前按团队共享数据设计，因此要求登录后才能访问。
+    match /devices/{document=**} {
+      allow read, write: if signedIn();
+    }
+
     match /testRecords/{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if signedIn();
     }
 
     // ===== 其他集合 =====

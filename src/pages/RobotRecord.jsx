@@ -12,7 +12,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
 import FaultPieChart from '../components/common/FaultPieChart';
 import useClipboard from '../hooks/useClipboard';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../hooks/useTheme';
 
 /**
  * MAC 地址输入框组件

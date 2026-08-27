@@ -1,17 +1,12 @@
-import { createContext, useContext, useState } from 'react';
+import { useState } from 'react';
 import { THEMES } from '../config/theme';
+import { ThemeContext } from './themeContextStore';
 
 /**
  * ThemeContext
  * 创建一个 React Context，用于在整个应用中共享主题状态。
  * 主题选择会持久化到 localStorage。
  */
-const ThemeContext = createContext({
-    themeKey: 'slate',
-    theme: THEMES.slate,
-    setThemeKey: () => {}
-});
-
 /**
  * ThemeProvider 组件
  * 用于包裹整个应用，提供主题状态和切换主题的方法。
@@ -37,10 +32,3 @@ export const ThemeProvider = ({ children }) => {
         </ThemeContext.Provider>
     );
 };
-
-/**
- * useTheme 自定义 Hook
- * 这是一个语法糖，方便在任何组件中直接调用 useTheme() 来获取当前主题，
- * 而不需要每次都导入 ThemeContext 和 useContext。
- */
-export const useTheme = () => useContext(ThemeContext);

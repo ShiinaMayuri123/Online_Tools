@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, Loader2, AlertCircle, Mail, Lock } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 import ParticleBackground from '../components/common/ParticleBackground';
 
 /**

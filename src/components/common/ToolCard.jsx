@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles } from 'lucide-react';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 
 /**
  * ToolCard: 首页展示单个工具的卡片组件

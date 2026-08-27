@@ -132,9 +132,9 @@ const SplitTunnelTest = () => {
     const locationMap = {};
     for (const ip of uniqueIps) {
       try {
-        const r = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,regionName,city,isp&lang=zh-CN`);
+        const r = await fetch(`https://ipwho.is/${ip}`);
         const d = await r.json();
-        locationMap[ip] = d.status === 'success' ? `${d.country} ${d.regionName} ${d.city}（${d.isp}）` : '保留/局域网地址';
+        locationMap[ip] = d.success ? `${d.country} ${d.region} ${d.city}（${d.connection?.isp || '未知运营商'}）` : '保留/局域网地址';
       } catch { locationMap[ip] = '接口限流'; }
       await new Promise(res => setTimeout(res, 120));
     }

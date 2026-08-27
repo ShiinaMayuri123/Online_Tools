@@ -1,27 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Copy, Check, Shield, AlertTriangle, Info, ClipboardPaste } from 'lucide-react';
 import AdbParameterForm from './AdbParameterForm';
+
+const getDefaultParamValues = (command) => Object.fromEntries(
+  (command?.params || [])
+    .filter((param) => param.default !== undefined)
+    .map((param) => [param.key, param.default])
+);
 
 /**
  * 动态 ADB 命令卡片组件
  * 封装命令描述、参数交互表单、动态生成的实际命令构建、危险防范及执行/复制操作
  */
 export default function AdbCommandCard({ command, onFillTerminal, isExecuting }) {
-  const [paramValues, setParamValues] = useState({});
+  const [paramValues, setParamValues] = useState(() => getDefaultParamValues(command));
   const [copied, setCopied] = useState(false);
-
-  // 初始化默认参数
-  useEffect(() => {
-    if (command?.params) {
-      const initial = {};
-      command.params.forEach((p) => {
-        if (p.default !== undefined) {
-          initial[p.key] = p.default;
-        }
-      });
-      setParamValues(initial);
-    }
-  }, [command]);
 
   const handleParamChange = (key, value) => {
     setParamValues((prev) => ({

@@ -1,17 +1,28 @@
+import { lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './hooks/useAuth';
 import Home from './pages/Home';
-import StitcherTool from './pages/Stitcher';
-import PasswordGenTool from './pages/PasswordGen';
-import RobotRecord from './pages/RobotRecord';
-import RobotDeviceDetail from './pages/RobotDeviceDetail';
-import BaseConverter from './pages/BaseConverter';
-import IpLookup from './pages/IpLookup';
-import AdbTool from './pages/AdbTool';
-import Login from './pages/Login';
-import Admin from './pages/Admin';
 import LoadingSpinner from './components/common/LoadingSpinner';
+
+const StitcherTool = lazy(() => import('./pages/Stitcher'));
+const PasswordGenTool = lazy(() => import('./pages/PasswordGen'));
+const RobotRecord = lazy(() => import('./pages/RobotRecord'));
+const RobotDeviceDetail = lazy(() => import('./pages/RobotDeviceDetail'));
+const BaseConverter = lazy(() => import('./pages/BaseConverter'));
+const IpLookup = lazy(() => import('./pages/IpLookup'));
+const AdbTool = lazy(() => import('./pages/AdbTool'));
+const Login = lazy(() => import('./pages/Login'));
+const Admin = lazy(() => import('./pages/Admin'));
+
+const PageFallback = () => (
+  <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+    <LoadingSpinner />
+  </div>
+);
+
+const PageBoundary = ({ children }) => <Suspense fallback={<PageFallback />}>{children}</Suspense>;
 
 /**
  * ProtectedRoute: 需要登录才能访问的路由
@@ -56,18 +67,19 @@ function App() {
         <HashRouter>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
+            <Route path="/login" element={<PageBoundary><Login /></PageBoundary>} />
             {/* 需要登录的工具 */}
-            <Route path="/robot-record" element={<ProtectedRoute><RobotRecord /></ProtectedRoute>} />
-            <Route path="/robot-record/:mac" element={<ProtectedRoute><RobotDeviceDetail /></ProtectedRoute>} />
+            <Route path="/robot-record" element={<ProtectedRoute><PageBoundary><RobotRecord /></PageBoundary></ProtectedRoute>} />
+            <Route path="/robot-record/:mac" element={<ProtectedRoute><PageBoundary><RobotDeviceDetail /></PageBoundary></ProtectedRoute>} />
             {/* 管理后台 */}
-            <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+            <Route path="/admin" element={<AdminRoute><PageBoundary><Admin /></PageBoundary></AdminRoute>} />
             {/* 公开工具 */}
-            <Route path="/adb" element={<AdbTool />} />
-            <Route path="/stitcher" element={<StitcherTool />} />
-            <Route path="/password" element={<PasswordGenTool />} />
-            <Route path="/base-converter" element={<BaseConverter />} />
-            <Route path="/ip-lookup" element={<IpLookup />} />
+            <Route path="/adb" element={<PageBoundary><AdbTool /></PageBoundary>} />
+            <Route path="/stitcher" element={<PageBoundary><StitcherTool /></PageBoundary>} />
+            <Route path="/password" element={<PageBoundary><PasswordGenTool /></PageBoundary>} />
+            <Route path="/base-converter" element={<PageBoundary><BaseConverter /></PageBoundary>} />
+            <Route path="/ip-lookup" element={<PageBoundary><IpLookup /></PageBoundary>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </HashRouter>
       </AuthProvider>

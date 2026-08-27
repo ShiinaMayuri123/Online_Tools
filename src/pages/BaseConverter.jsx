@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Hash, Copy, Check, ArrowRight } from 'lucide-react';
 import ToolLayout from '../components/common/ToolLayout';
 import useClipboard from '../hooks/useClipboard';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../hooks/useTheme';
+import { convertBase } from '../utils/baseConverter';
 
 /**
  * 进制转换工具页面
@@ -27,15 +28,7 @@ const BaseConverter = () => {
     setError('');
     if (!input.trim()) { setError('请输入数值'); return; }
     try {
-      const bigintValue = BigInt((fromBase === 10 ? '' : '0') + input.trim());
-      if (bigintValue < 0n) throw new Error('暂不支持负数');
-      const hexStr = bigintValue.toString(16).toUpperCase();
-      setResults({
-        bin: bigintValue.toString(2),
-        oct: bigintValue.toString(8),
-        dec: bigintValue.toString(10),
-        hex: hexStr,
-      });
+      setResults(convertBase(input, fromBase));
     } catch {
       setError('输入的数值与所选进制不匹配');
       setResults(null);

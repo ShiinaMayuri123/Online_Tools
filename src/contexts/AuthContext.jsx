@@ -1,21 +1,14 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { AuthContext } from './authContextStore';
 
 /**
  * AuthContext
  * 提供全局认证状态：当前用户、角色、加载状态、登录/登出方法。
  * 当 Firebase 未配置时（auth/db 为 null），所有功能降级为未登录状态。
  */
-const AuthContext = createContext({
-  user: null,
-  role: null,
-  loading: false,
-  login: async () => {},
-  logout: async () => {},
-});
-
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
@@ -66,5 +59,3 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-
-export const useAuth = () => useContext(AuthContext);

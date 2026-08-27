@@ -28,12 +28,16 @@ export default function AdbWorkspace({
   theme, commands, output, outputRef, customCommand, setCustomCommand, onExecute, onFillTerminal,
   isRunning, history, onClearOutput, onClearHistory, activePanel, setActivePanel,
   connectionInput, setConnectionInput, portInput, setPortInput, connectedDevice, connecting,
-  agentBaseUrl, agentToken, agentCapabilities, agentDetecting, agentVersion, agentManifest, agentLaunchState, hasAgentInstallHint, onStartAgent, onRememberAgentInstall, onDetect, handleConnect, handleDisconnect, refreshDevices, refreshingDevices, dangerCommand, setDangerCommand, onRecordOperation,
+  agentBaseUrl, agentToken, agentCapabilities, agentDetecting, agentVersion, agentManifest, agentLaunchState, onStartAgent, onDetect, onPairAgent, handleConnect, handleDisconnect, refreshDevices, refreshingDevices, dangerCommand, setDangerCommand, onRecordOperation,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('全部');
   const [copiedKey, setCopiedKey] = useState('');
   const [expandedFlowId, setExpandedFlowId] = useState(null);
+  const [pairingToken, setPairingToken] = useState('');
+  const [pairingError, setPairingError] = useState('');
+  const [pairingBusy, setPairingBusy] = useState(false);
+  const [installerChecking, setInstallerChecking] = useState(false);
 
   const categories = useMemo(() => ['全部', ...new Set(commands.map((command) => command.category))], [commands]);
   const filteredReferences = commands.filter((command) => {
@@ -49,9 +53,37 @@ export default function AdbWorkspace({
   };
 
   const installerUrl = agentManifest?.installerUrl || '/downloads/adb-agent-setup.exe';
+  const fallbackInstallerUrl = agentManifest?.fallbackInstallerUrl || '/download-agent.html';
   const latestVersion = agentManifest?.latestVersion || '';
   const upgradeAvailable = Boolean(agentVersion && latestVersion && compareVersions(agentVersion, latestVersion) < 0);
   const supportsFileManager = agentCapabilities.includes('file-manager');
+
+  const downloadInstaller = async () => {
+    if (installerChecking) return;
+    setInstallerChecking(true);
+    try {
+      const response = await fetch(installerUrl, { method: 'HEAD', cache: 'no-store' });
+      const contentType = response.headers.get('content-type') || '';
+      window.location.assign(response.ok && !contentType.includes('text/html') ? installerUrl : fallbackInstallerUrl);
+    } catch {
+      window.location.assign(fallbackInstallerUrl);
+    } finally {
+      setInstallerChecking(false);
+    }
+  };
+
+  const submitPairing = async () => {
+    setPairingError('');
+    setPairingBusy(true);
+    try {
+      await onPairAgent(pairingToken);
+      setPairingToken('');
+    } catch (error) {
+      setPairingError(error.message);
+    } finally {
+      setPairingBusy(false);
+    }
+  };
 
   const outputLine = (line) => (
     <div key={`${line.time}-${line.data}`} className="whitespace-pre-wrap break-all">
@@ -104,7 +136,7 @@ export default function AdbWorkspace({
           );
         })}
       </div>
-      <section className="rounded-xl border border-slate-200 bg-white/70 p-4"><h3 className="font-semibold text-slate-700">日志关键词</h3><div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">{LOG_FILTER_KEYWORDS.map(({ keyword, desc }) => <button key={keyword} type="button" onClick={() => copyCommand(`adb logcat | grep -i "${keyword}"`, `log-${keyword}`)} className="rounded-lg bg-slate-50 px-3 py-2 text-left hover:bg-blue-50"><code className="text-xs text-purple-600">{keyword}</code><span className="block mt-1 text-[11px] text-slate-400">{desc}</span></button>)}</div></section>
+      <section className="rounded-xl border border-slate-200 bg-white/70 p-4"><h3 className="font-semibold text-slate-700">日志关键词</h3><div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">{LOG_FILTER_KEYWORDS.map(({ keyword, desc }) => <button key={keyword} type="button" onClick={() => copyCommand(`adb shell logcat | grep -i "${keyword}"`, `log-${keyword}`)} className="rounded-lg bg-slate-50 px-3 py-2 text-left hover:bg-blue-50"><code className="text-xs text-purple-600">{keyword}</code><span className="block mt-1 text-[11px] text-slate-400">{desc}</span></button>)}</div></section>
     </div>
   );
 
@@ -121,13 +153,12 @@ export default function AdbWorkspace({
 
   return (
     <div className="space-y-5">
-      <style>{!agentBaseUrl ? '[class*="border-blue-100"] { display: none; }' : ''}</style>
       <style>{'button[title="复制完整命令"] span { display: none; }'}</style>
       <section className="flex min-h-0 flex-col rounded-2xl border border-slate-200 bg-white/70 backdrop-blur-sm shadow-lg shadow-slate-300/30 overflow-hidden lg:h-[calc(100dvh-6rem)]" style={{ backgroundColor: theme.panelTint }}>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4"><div><h2 className="text-lg font-bold text-slate-900">机器人现场运维平台</h2><p className="mt-1 text-sm text-slate-600">连接设备、选择命令、在终端确认后执行</p></div><span className={`rounded-full px-3 py-1 text-xs font-semibold shadow-sm ${agentBaseUrl ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{agentBaseUrl ? '代理服务已连接' : '等待本地代理'}</span></div>
-        {!agentBaseUrl && <div className="flex flex-col gap-3 border-b border-blue-100 bg-blue-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-bold text-slate-800">现场连接助手未运行</p><p className="mt-1 text-xs text-slate-600">请先启动“现场连接助手”，网页会自动完成配对，不需要输入 Token。</p></div><div className="flex shrink-0 gap-2"><a href={installerUrl} download="adb-agent-setup.exe" className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">下载连接助手</a><button type="button" onClick={onDetect} disabled={agentDetecting} className="rounded-md border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50">{agentDetecting ? '检测中...' : '重新检测'}</button></div></div>}
-        <div className="flex flex-col gap-3 border-b border-slate-200 bg-white/50 p-4 sm:flex-row sm:items-end"><label className="min-w-0 flex-1 text-xs font-medium text-slate-500">设备 IP<input value={connectionInput} onChange={(event) => setConnectionInput(event.target.value)} className="mt-1 w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 font-mono text-xs text-slate-700 outline-none focus:border-blue-400" placeholder="192.168.1.100" /></label><label className="w-full sm:w-28 text-xs font-medium text-slate-500">ADB 端口<input value={portInput} onChange={(event) => setPortInput(event.target.value)} className="mt-1 w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 font-mono text-xs text-slate-700 outline-none focus:border-blue-400" placeholder="5555" /></label><button type="button" onClick={connectedDevice ? () => handleDisconnect(connectedDevice) : handleConnect} disabled={connecting || refreshingDevices || (!connectedDevice && !connectionInput)} className={`rounded-md px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 ${connectedDevice ? 'bg-rose-500 hover:bg-rose-600' : `${theme.primaryBg} ${theme.primaryHover}`}`}>{connecting ? '连接中...' : refreshingDevices && connectedDevice ? '处理中...' : connectedDevice ? '断开连接' : '建立连接'}</button><button type="button" onClick={refreshDevices} disabled={refreshingDevices || agentDetecting} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 disabled:opacity-50">{refreshingDevices ? '刷新中...' : '刷新设备'}</button></div>
-        {agentBaseUrl ? <div className="flex flex-col gap-3 border-b border-emerald-100 bg-emerald-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-bold text-emerald-900">现场连接助手已连接</p><p className="mt-1 text-xs text-emerald-700">版本：{agentVersion || '未知'}{upgradeAvailable ? '，有新版本可用' : ''}</p></div><div className="flex shrink-0 flex-wrap gap-2"><button type="button" onClick={onDetect} disabled={agentDetecting} className="rounded-md border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50">{agentDetecting ? '检测中...' : '重新检测'}</button>{upgradeAvailable && <a href={installerUrl} download="adb-agent-setup.exe" onClick={onRememberAgentInstall} className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">升级助手</a>}</div></div> : <div className="flex flex-col gap-3 border-b border-blue-200 bg-blue-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-bold text-slate-800">{agentLaunchState === 'failed' ? '连接助手启动失败' : hasAgentInstallHint ? '检测不到正在运行的连接助手' : '首次使用需要安装现场连接助手'}</p><p className="mt-1 text-xs text-slate-600">{agentLaunchState === 'failed' ? '请确认已完成安装，或手动打开助手后重新检测。' : hasAgentInstallHint ? '点击启动已安装助手，网页会自动等待并连接。' : '首次下载并安装一次，后续无需重复下载 ZIP。'}</p></div><div className="flex shrink-0 flex-wrap gap-2"><button type="button" onClick={onStartAgent} disabled={agentDetecting || agentLaunchState === 'launching'} className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">{agentLaunchState === 'launching' ? '启动检测中...' : '启动已安装助手'}</button><a href={installerUrl} download="adb-agent-setup.exe" onClick={onRememberAgentInstall} className="rounded-md border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50">下载并安装助手</a><button type="button" onClick={onDetect} disabled={agentDetecting} className="rounded-md border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50">{agentDetecting ? '检测中...' : '重新检测'}</button></div></div>}
+        {!agentBaseUrl && <div className="flex flex-col gap-3 border-b border-blue-100 bg-blue-50/70 px-4 py-3"><div><p className="text-sm font-bold text-slate-800">现场连接助手未运行</p><p className="mt-1 text-xs text-slate-600">下载标准安装器后可直接覆盖升级；安装完成后点击“启动已安装助手”，再从助手窗口复制 Token 配对。</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={downloadInstaller} disabled={installerChecking} className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">{installerChecking ? '检查安装包...' : '下载连接助手'}</button><button type="button" onClick={onStartAgent} disabled={agentLaunchState === 'launching'} className="rounded-md border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50">{agentLaunchState === 'launching' ? '启动检测中...' : '启动已安装助手'}</button><button type="button" onClick={onDetect} disabled={agentDetecting} className="rounded-md border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50">{agentDetecting ? '检测中...' : '重新检测'}</button><a href={fallbackInstallerUrl} className="self-center text-xs font-medium text-blue-700 hover:underline">安装说明</a></div></div>}
+        {agentBaseUrl && <div className="border-b border-emerald-100 bg-emerald-50/70 px-4 py-3"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-bold text-emerald-900">现场连接助手已发现</p><p className="mt-1 text-xs text-emerald-700">版本：{agentVersion || '未知'}{upgradeAvailable ? `，可升级至 ${latestVersion}` : latestVersion ? '，已是最新版本' : ''}</p></div><div className="flex shrink-0 flex-wrap gap-2"><button type="button" onClick={onDetect} disabled={agentDetecting} className="rounded-md border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50">重新检测</button>{upgradeAvailable && <button type="button" onClick={downloadInstaller} disabled={installerChecking} className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">{installerChecking ? '检查安装包...' : '下载升级安装器'}</button>}</div></div>{upgradeAvailable && <p className="mt-2 text-xs text-emerald-800">运行下载的安装器覆盖安装；完成后点击“重新检测”，版本更新会自动识别。</p>}<div className="mt-3 flex flex-col gap-2 sm:flex-row"><input value={pairingToken} onChange={event => setPairingToken(event.target.value)} placeholder={agentToken ? '输入新 Token 可重新配对' : '粘贴本地代理窗口中的 Token'} className="min-w-0 flex-1 rounded-md border border-emerald-200 bg-white px-3 py-2 font-mono text-xs outline-none focus:border-emerald-500" /><button type="button" onClick={submitPairing} disabled={pairingBusy || !pairingToken.trim()} className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">{pairingBusy ? '配对中...' : agentToken ? '重新配对' : '完成配对'}</button></div>{pairingError && <p className="mt-2 text-xs text-rose-700">{pairingError}</p>}</div>}
+        <div className="flex flex-col gap-3 border-b border-slate-200 bg-white/50 p-4 sm:flex-row sm:items-end"><label className="min-w-0 flex-1 text-xs font-medium text-slate-500">设备 IP<input value={connectionInput} onChange={(event) => setConnectionInput(event.target.value)} className="mt-1 w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 font-mono text-xs text-slate-700 outline-none focus:border-blue-400" placeholder="192.168.1.100" /></label><label className="w-full sm:w-28 text-xs font-medium text-slate-500">ADB 端口<input value={portInput} onChange={(event) => setPortInput(event.target.value)} className="mt-1 w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 font-mono text-xs text-slate-700 outline-none focus:border-blue-400" placeholder="5555" /></label><button type="button" onClick={connectedDevice ? () => handleDisconnect(connectedDevice) : handleConnect} disabled={!agentToken || connecting || refreshingDevices || (!connectedDevice && !connectionInput)} className={`rounded-md px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 ${connectedDevice ? 'bg-rose-500 hover:bg-rose-600' : `${theme.primaryBg} ${theme.primaryHover}`}`}>{connecting ? '连接中...' : refreshingDevices && connectedDevice ? '处理中...' : connectedDevice ? '断开连接' : '建立连接'}</button><button type="button" onClick={refreshDevices} disabled={!agentToken || refreshingDevices || agentDetecting} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 disabled:opacity-50">{refreshingDevices ? '刷新中...' : '刷新设备'}</button></div>
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-5">
           <div className="flex min-h-0 flex-col rounded-xl border border-slate-200 bg-slate-50/70 shadow-sm lg:col-span-2 overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-200 bg-white/70 px-3 py-2.5"><div className="flex items-center gap-2 text-sm font-semibold text-slate-700"><Terminal size={16} className="text-blue-500" />实时终端</div><span className="text-[11px] text-slate-400">{connectedDevice || '未连接设备'}</span></div>
@@ -141,7 +172,7 @@ export default function AdbWorkspace({
           </div>
         </div>
       </section>
-      {dangerCommand && <DangerConfirmModal isOpen onClose={() => setDangerCommand(null)} onConfirm={() => { onExecute(dangerCommand.builtCmd, dangerCommand.command); setDangerCommand(null); }} command={dangerCommand.command} builtCmd={dangerCommand.builtCmd} />}
+      {dangerCommand && <DangerConfirmModal isOpen onClose={() => setDangerCommand(null)} onConfirm={() => onExecute(dangerCommand.builtCmd, dangerCommand.command, dangerCommand.confirmCommand)} command={dangerCommand.command} builtCmd={dangerCommand.builtCmd} />}
     </div>
   );
 }

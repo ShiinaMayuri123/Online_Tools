@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Wrench, Plus, MessageSquare, ArrowRight, FileCode } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../hooks/useTheme';
 import { TOOLS } from '../config/theme';
 import ThemeSwitcher from '../components/common/ThemeSwitcher';
 import ParticleBackground from '../components/common/ParticleBackground';

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { AlignVerticalSpaceAround, AlignHorizontalSpaceAround, Download, Upload, Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon, Minus } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import ToolLayout from '../components/common/ToolLayout';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../hooks/useTheme';
 import ExportModal from '../components/stitcher/ExportModal';
 import { stitchImages } from '../utils/imageUtils';
 

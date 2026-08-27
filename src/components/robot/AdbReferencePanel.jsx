@@ -8,7 +8,7 @@ import {
   DEVICE_SPECIFIC_INFO, TEST_SUMMARY, LOG_FILTER_KEYWORDS,
 } from '../../config/adbData';
 import useClipboard from '../../hooks/useClipboard';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 
 /** 状态标签 */
 const StatusBadge = ({ status }) => {
@@ -298,7 +298,7 @@ const AdbReferencePanel = ({ defaultOpen = false }) => {
           >
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {LOG_FILTER_KEYWORDS.map(({ keyword, desc }) => {
-                const cmd = `adb logcat | grep -i "${keyword}"`;
+                const cmd = `adb shell logcat | grep -i "${keyword}"`;
                 return (
                   <div key={keyword} className="bg-slate-50 hover:bg-slate-100 rounded-xl p-4 transition-colors">
                     <div className="flex items-center justify-between gap-2">

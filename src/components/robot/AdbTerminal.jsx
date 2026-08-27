@@ -17,7 +17,6 @@ export default function AdbTerminal({
   history = [],
   onClearHistory,
   outputRef,
-  agentBaseUrl,
 }) {
   const outputStyles = {
     command: 'text-blue-400 font-bold',

@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { HardDrive, Check, Copy, RefreshCw } from 'lucide-react';
 import ToolLayout from '../components/common/ToolLayout';
 import useClipboard from '../hooks/useClipboard';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../hooks/useTheme';
 
 // 密码学安全的随机整数生成（范围 [0, max)）
 const secureRandomInt = (max) => {

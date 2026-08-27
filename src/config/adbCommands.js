@@ -197,7 +197,7 @@ export const ADB_COMMANDS = [
         placeholder: '例如 fatal / crash / anr',
       },
     ],
-    build: (p) => (p.tag ? `adb logcat -d | grep -i "${p.tag}"` : 'adb logcat -d'),
+    build: (p) => (p.tag ? `adb shell logcat -d | grep -i "${p.tag}"` : 'adb logcat -d'),
   },
   {
     id: 'logcat_clear',
@@ -581,7 +581,7 @@ export const ADB_COMMANDS = [
     description: '列出系统 /dev 下的串口设备（雷达、底盘、传感器常用）',
     danger: 'none',
     params: [],
-    build: () => 'adb shell "ls /dev | grep tty"',
+    build: () => 'adb shell ls /dev | grep tty',
   },
   {
     id: 'list_usb_devices',

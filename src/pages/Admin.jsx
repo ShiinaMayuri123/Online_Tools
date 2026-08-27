@@ -4,7 +4,7 @@ import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import ToolLayout from '../components/common/ToolLayout';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 /**
  * Admin: 管理后台页面

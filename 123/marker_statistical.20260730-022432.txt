@@ -1,0 +1,4 @@
+marker_id 120, obs_count 1261, normal_count 1261, rt_error_count 0, id_error_count 0, may_right_ids: 
+marker_id 121, obs_count 637, normal_count 637, rt_error_count 0, id_error_count 0, may_right_ids: 
+marker_id 164, obs_count 840, normal_count 840, rt_error_count 0, id_error_count 0, may_right_ids: 
+marker_id 214, obs_count 87, normal_count 87, rt_error_count 0, id_error_count 0, may_right_ids: 

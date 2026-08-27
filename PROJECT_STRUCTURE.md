@@ -12,7 +12,7 @@ online_toolbox_vite/
 │   ├── icons.svg                   # 网站使用的 SVG 图标集合
 │   ├── title.jpg                   # 首页或页面使用的图片资源
 │   ├── download-agent.html         # 本地连接助手下载/使用说明页面
-│   └── install-agent.bat           # Windows 辅助安装脚本
+│   └── install-agent.bat           # 已弃用的 Windows 安装脚本（只输出迁移提示）
 ├── src/                            # React 前端源代码
 │   ├── components/                 # 可复用 UI 和业务组件
 │   │   ├── common/                 # 全站通用组件
@@ -38,7 +38,7 @@ online_toolbox_vite/
 │   ├── package-lock.json           # 连接助手依赖锁定版本
 │   ├── build.bat                   # Windows 一键打包脚本
 │   ├── start.bat                   # 未打包时使用 Node.js 启动助手
-│   ├── setup.ps1                   # PowerShell 下载并安装开发版助手
+│   ├── setup.ps1                   # 下载并校验指定 Release 版本的安装器
 │   ├── QUICK_START.md              # 现场同事使用说明
 │   ├── README.md                   # 连接助手完整开发/API 说明
 │   └── RELEASE.md                  # Windows 发布和上传 Release 说明
@@ -120,7 +120,6 @@ React 应用启动入口。创建 React 根节点，加载全局样式，并渲�
 | `DangerConfirmModal.jsx` | 高风险命令确认弹窗，防止误执行删除、重启、清理数据等命令。 |
 | `ExecutionHistory.jsx` | 保存和展示本地命令执行记录、耗时、状态和输出摘要。 |
 | `RobotHealthDiagnostic.jsx` | 机器人健康检查批量诊断，集中执行设备、系统、电池、网络和日志检查。 |
-| `LocalAgentGuide.jsx` | ADB 本地助手的网页内安装和使用引导。 |
 | `AdbReferencePanel.jsx` | ADB 命令参考面板，保留兼容旧页面或参考数据的展示能力。 |
 
 ADB 当前工作流是：命令卡片点击后只把命令填入终端；用户点击执行或按 Enter 后才发起请求；高风险命令再经过确认弹窗。浏览器通过本机连接助手调用 `adb.exe`，网页本身不会直接启动系统进程。
@@ -178,7 +177,7 @@ ADB 当前工作流是：命令卡片点击后只把命令填入终端；用户�
 
 ## 十、本地连接助手 `local-agent/`
 
-连接助手运行在现场 Windows 笔记本上，监听 `127.0.0.1`，由网页自动发现。它负责调用本机 `adb.exe`，网页只负责发起受控请求和展示结果。
+连接助手运行在现场 Windows 笔记本上，监听 `127.0.0.1`。网页发现助手后由用户输入其控制台显示的 Token 完成配对；它负责调用本机 `adb.exe`，网页只负责发起受控请求和展示结果。
 
 | 文件 | 职责 |
 |---|---|
@@ -191,7 +190,7 @@ ADB 当前工作流是：命令卡片点击后只把命令填入终端；用户�
 | `package-lock.json` | 锁定助手依赖版本，保证构建结果可复现。 |
 | `build.bat` | Windows 开发者打包入口，生成 `dist/adb-agent.exe`。 |
 | `start.bat` | 已安装 Node.js 时直接启动 `index.js`。 |
-| `setup.ps1` | 从 GitHub 下载源码、安装依赖并启动开发版助手。 |
+| `setup.ps1` | 下载指定 Release 版本的安装器，校验 SHA-256 后启动安装。 |
 | `QUICK_START.md` | 面向现场同事的最短使用流程。 |
 | `README.md` | 助手 API、运行方式、安全限制和开发说明。 |
 | `RELEASE.md` | 打包、上传 GitHub Release 和发布检查清单。 |
@@ -201,19 +200,17 @@ ADB 当前工作流是：命令卡片点击后只把命令填入终端；用户�
 | API | 作用 |
 |---|---|
 | `GET /health` | 网页探测助手是否运行。 |
-| `GET /token` | 网页自动获取本次助手运行的配对信息。 |
 | `GET /adb/devices` | 获取当前 ADB 设备列表。 |
 | `POST /adb/connect` | 使用 IP 和端口连接局域网设备。 |
 | `POST /adb/disconnect` | 断开指定设备或无线连接。 |
 | `POST /adb/exec` | 执行受控的 ADB 命令。 |
-| `POST /adb/exec-safe` | 执行带命令安全校验的 ADB 命令。 |
 | `WS /ws` | 流式传输命令输出和终端状态。 |
 
 ## 十一、服务端与静态资源
 
 ### `server/index.js`
 
-项目原有的本地开发/辅助服务端入口。它与 `local-agent/index.js` 的职责不同：`server` 服务项目自身的辅助接口，`local-agent` 专门负责现场笔记本上的 ADB 调用。
+已弃用的 ADB 服务入口。`npm run server` 会拒绝启动；现场笔记本只允许使用 `local-agent/index.js` 的受控 ADB 调用。
 
 ### `public/`
 

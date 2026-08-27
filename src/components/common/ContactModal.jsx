@@ -1,6 +1,6 @@
 import { Send, Mail } from 'lucide-react';
 import Modal from './Modal';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 
 /**
  * ContactModal: 联系开发者模态框

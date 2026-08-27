@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Wrench, LogOut, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../hooks/useTheme';
+import { useAuth } from '../../hooks/useAuth';
 import ThemeSwitcher from './ThemeSwitcher';
 import ParticleBackground from './ParticleBackground';
 

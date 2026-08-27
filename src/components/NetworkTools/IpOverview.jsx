@@ -106,7 +106,6 @@ const ScoreFactors = ({ risk }) => {
 export const ConsistencyCheck = ({ consistency, consistencyDone, isConsistent, isPartial, hasFailure }) => {
   const sources = [
     { id: 'ipify', label: 'ipify.org' },
-    { id: 'ipapi', label: 'ip-api.com' },
     { id: 'ipwho', label: 'ipwho.is' },
     { id: 'cf', label: 'Cloudflare' },
   ];
@@ -283,9 +282,6 @@ export const DataSources = ({ refetch }) => (
       <div className="space-y-2">
         <a href="https://ipinfo.io" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">
           <span className="w-2 h-2 rounded-full bg-indigo-300"></span> IPinfo.io
-        </a>
-        <a href="http://ip-api.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">
-          <span className="w-2 h-2 rounded-full bg-indigo-300"></span> ip-api.com
         </a>
         <a href="https://ipwho.is" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">
           <span className="w-2 h-2 rounded-full bg-indigo-300"></span> ipwho.is

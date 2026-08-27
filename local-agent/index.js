@@ -14,11 +14,11 @@ import { WebSocketServer } from 'ws';
 import { spawn, exec } from 'child_process';
 import crypto from 'crypto';
 import multer from 'multer';
-import { ZipArchive } from 'archiver';
-import { createReadStream, createWriteStream, existsSync, lstatSync, mkdirSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from 'fs';
-import { basename, dirname, join, posix, relative, resolve } from 'path';
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'fs';
+import { basename, dirname, isAbsolute, join, posix, resolve } from 'path';
 import { findAdb, checkAdbAvailable } from './adb-finder.js';
 import { findAvailablePort, DEFAULT_PORT } from './port-finder.js';
+import { isAdbCommandSafe, parseAdbCommand, requiresAdbConfirmation } from './command-policy.js';
 
 // ============ 配置 ============
 
@@ -26,19 +26,28 @@ const __dirname = process.pkg ? dirname(process.execPath) : process.cwd();
 const runtimeDir = process.pkg ? dirname(process.execPath) : __dirname;
 const DIST_DIR = process.pkg ? join(runtimeDir, 'frontend-dist') : join(__dirname, '..', 'dist');
 const TOKEN_FILE = join(runtimeDir, 'agent.token');
-const ALLOWED_ORIGINS = ['*']; // 开发时允许所有来源，生产环境改为你的域名
+const CONFIGURED_ORIGINS = (process.env.AGENT_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+const ALLOWED_ORIGINS = new Set([
+  'http://127.0.0.1:5173',
+  'http://localhost:5173',
+  'http://127.0.0.1:4173',
+  'http://localhost:4173',
+  ...CONFIGURED_ORIGINS,
+]);
 const FILE_ROOT = '/sdcard';
 const MUTATION_ROOTS = ['/sdcard/pudu', '/sdcard/PuduRobotMap', '/sdcard/PuduRobotLog', '/sdcard/pdconfig'];
 const TRANSFER_ROOT = join(runtimeDir, 'adb-transfers');
 const TRANSFER_TTL_MS = 30 * 60 * 1000;
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024;
-const AGENT_VERSION = '1.1.2';
+const AGENT_VERSION = '1.1.3';
 const AGENT_PROTOCOL_VERSION = 1;
 const AGENT_CAPABILITIES = ['file-manager'];
 const PROTOCOL_START = process.argv.includes('--protocol-start');
 const NO_BROWSER = process.argv.includes('--no-browser');
 const transferTasks = new Map();
-const transferFiles = new Map();
 
 mkdirSync(TRANSFER_ROOT, { recursive: true });
 
@@ -89,15 +98,24 @@ const app = express();
 let wss = null;
 app.use(express.json());
 
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  const port = server?.address()?.port;
+  return ALLOWED_ORIGINS.has(origin)
+    || origin === `http://127.0.0.1:${port}`
+    || origin === `http://localhost:${port}`;
+}
+
 // CORS 中间件
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (ALLOWED_ORIGINS.includes('*') || ALLOWED_ORIGINS.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  if (origin && isAllowedOrigin(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
     res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition,Content-Length');
   }
+  if (origin && !isAllowedOrigin(origin)) return res.status(403).json({ error: '来源不允许' });
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
@@ -164,37 +182,6 @@ function runAdb(args, options = {}) {
   });
 }
 
-/**
- * 验证命令是否安全
- * @param {string} command - 命令字符串
- * @returns {boolean} 是否安全
- */
-function isCommandSafe(command) {
-  const normalized = command.trim().toLowerCase();
-
-  // 黑名单
-  const blocked = ['adb reboot recovery'];
-  if (blocked.some(b => normalized.startsWith(b))) return false;
-
-  // 只允许 adb 开头的命令
-  if (!normalized.startsWith('adb ')) return false;
-
-  // 禁止 shell 特殊字符（防止注入）
-  const forbiddenChars = /[;&|<>$`\\]/;
-  if (forbiddenChars.test(command)) return false;
-
-  return true;
-}
-
-/**
- * 解析命令为参数数组
- * @param {string} command - 命令字符串
- * @returns {string[]} 参数数组
- */
-function parseCommand(command) {
-  return command.split(/\s+/).filter(Boolean);
-}
-
 function safeRemove(target) {
   try {
     rmSync(target, { recursive: true, force: true });
@@ -216,6 +203,20 @@ function normalizeRemotePath(value) {
     throw new Error('路径不在 /sdcard 范围内');
   }
   return normalized;
+}
+
+function resolveLocalTransferDirectory(value) {
+  if (typeof value !== 'string' || !value.trim() || !isAbsolute(value.trim())) {
+    throw new Error('本地保存目录必须是已有的绝对路径');
+  }
+  const target = resolve(value.trim());
+  if (!existsSync(target) || !statSync(target).isDirectory()) {
+    throw new Error('本地保存目录不存在或不是目录');
+  }
+  if (lstatSync(target).isSymbolicLink()) {
+    throw new Error('本地保存目录不能是符号链接');
+  }
+  return realpathSync(target);
 }
 
 function isWithinRoot(target, root) {
@@ -315,8 +316,7 @@ function createTransfer(type, device, label) {
     progress: null,
     phase: '等待执行',
     message: '',
-    fileId: null,
-    fileName: null,
+    localPath: null,
     error: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -342,8 +342,7 @@ function publicTransfer(task) {
     progress: task.progress,
     phase: task.phase,
     message: task.message,
-    fileId: task.fileId,
-    fileName: task.fileName,
+    localPath: task.localPath,
     error: task.error,
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
@@ -358,33 +357,8 @@ function broadcastTransfer(task) {
   });
 }
 
-function registerTransferFile(task, filePath, fileName) {
-  const fileId = crypto.randomUUID();
-  transferFiles.set(fileId, { fileId, filePath, fileName, taskId: task.id, expiresAt: Date.now() + TRANSFER_TTL_MS });
-  task.fileId = fileId;
-  task.fileName = fileName;
-}
-
-function zipDirectory(sourcePath, destinationPath) {
-  return new Promise((resolveZip, rejectZip) => {
-    const output = createWriteStream(destinationPath);
-    const archive = new ZipArchive({ zlib: { level: 6 } });
-    output.on('close', resolveZip);
-    archive.on('error', rejectZip);
-    archive.pipe(output);
-    archive.directory(sourcePath, false);
-    archive.finalize();
-  });
-}
-
 function cleanExpiredTransfers() {
   const now = Date.now();
-  transferFiles.forEach((file, fileId) => {
-    if (file.expiresAt <= now) {
-      safeRemove(file.filePath);
-      transferFiles.delete(fileId);
-    }
-  });
   transferTasks.forEach((task, taskId) => {
     if (task.status !== 'running' && now - task.updatedAt > TRANSFER_TTL_MS) {
       task.cleanupPaths.forEach(safeRemove);
@@ -401,13 +375,6 @@ function sanitizeFilename(value) {
     throw new Error('文件名无效');
   }
   return name;
-}
-
-function createTransferDirectory(task) {
-  const taskDir = join(TRANSFER_ROOT, task.id);
-  mkdirSync(taskDir, { recursive: true });
-  task.cleanupPaths.push(taskDir);
-  return taskDir;
 }
 
 function updateProgressFromOutput(task, text) {
@@ -462,18 +429,13 @@ app.get('/health', (req, res) => {
     version: AGENT_VERSION,
     protocolVersion: AGENT_PROTOCOL_VERSION,
     capabilities: AGENT_CAPABILITIES,
-    adbPath,
     port: server.address()?.port
   });
 });
 
-// 获取 Token 信息（用于前端显示配对状态）
-app.get('/token', (req, res) => {
-  res.json({
-    token: API_TOKEN,
-    tokenPreview: API_TOKEN.slice(0, 8) + '...',
-    hasToken: true
-  });
+// Token 仅在本机启动窗口中展示，不能通过 HTTP 暴露给任意网页。
+app.get('/token', (_req, res) => {
+  res.status(410).json({ error: 'Token 不通过 HTTP 提供，请从本地代理窗口复制后手动配对' });
 });
 
 // 获取设备列表
@@ -503,22 +465,24 @@ app.post('/adb/connect', checkAuth, async (req, res) => {
   const { ip, port = 5555 } = req.body;
   if (!ip) return res.status(400).json({ success: false, error: 'IP 地址不能为空' });
 
-  // 验证 IP 格式
-  const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
-  if (!ipRegex.test(ip)) {
+  // 验证 IPv4 地址和端口范围
+  const octets = String(ip).split('.');
+  const parsedPort = Number(port);
+  const validIp = octets.length === 4 && octets.every(octet => /^\d{1,3}$/.test(octet) && Number(octet) <= 255);
+  if (!validIp || !Number.isInteger(parsedPort) || parsedPort < 1 || parsedPort > 65535) {
     return res.status(400).json({ success: false, error: 'IP 地址格式无效' });
   }
 
   try {
-    const { stdout, stderr, code } = await runAdb(['connect', `${ip}:${port}`], { timeout: 10000 });
-    const success = stdout.includes('connected') || stdout.includes('already');
-    res.json({
+    const { stdout, stderr, code } = await runAdb(['connect', `${ip}:${parsedPort}`], { timeout: 10000 });
+    const success = code === 0 && (stdout.includes('connected') || stdout.includes('already'));
+    res.status(success ? 200 : 502).json({
       success,
       message: stdout.trim() || stderr.trim(),
-      device: success ? `${ip}:${port}` : null
+      device: success ? `${ip}:${parsedPort}` : null
     });
   } catch (error) {
-    res.json({ success: false, error: error.message });
+    res.status(502).json({ success: false, error: error.message });
   }
 });
 
@@ -527,29 +491,45 @@ app.post('/adb/disconnect', checkAuth, async (req, res) => {
   const { device } = req.body;
   try {
     const args = device ? ['disconnect', device] : ['disconnect'];
-    const { stdout } = await runAdb(args);
-    res.json({ success: true, message: stdout.trim() });
+    const { stdout, stderr, code } = await runAdb(args);
+    const success = code === 0;
+    res.status(success ? 200 : 502).json({ success, message: stdout.trim() || stderr.trim(), code });
   } catch (error) {
-    res.json({ success: false, error: error.message });
+    res.status(502).json({ success: false, error: error.message });
   }
 });
 
 // 执行命令（一次性返回结果）
 app.post('/adb/exec', checkAuth, async (req, res) => {
-  const { command } = req.body;
+  const { command, confirmCommand } = req.body;
   if (!command) return res.status(400).json({ success: false, error: '命令不能为空' });
 
   // 安全检查
-  if (!isCommandSafe(command)) {
+  if (!isAdbCommandSafe(command)) {
     return res.status(403).json({ success: false, error: '命令不安全或不在白名单中' });
+  }
+  if (requiresAdbConfirmation(command) && confirmCommand !== command) {
+    return res.status(409).json({
+      success: false,
+      requiresConfirmation: true,
+      confirmation: command,
+      error: '该命令可能修改设备或本机文件，请确认后执行',
+    });
   }
 
   try {
-    const args = parseCommand(command);
+    const args = parseAdbCommand(command);
     const { stdout, stderr, code } = await runAdb(args.slice(1), { timeout: 30000 });
-    res.json({ success: true, stdout, stderr, code });
+    const success = code === 0;
+    res.status(success ? 200 : 502).json({
+      success,
+      stdout,
+      stderr,
+      code,
+      error: success ? undefined : stderr.trim() || stdout.trim() || `ADB 退出码: ${code}`,
+    });
   } catch (error) {
-    res.json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -591,29 +571,29 @@ app.post('/adb/rm', checkAuth, async (req, res) => {
 app.post('/adb/pull', checkAuth, async (req, res) => {
   try {
     const remotePath = normalizeRemotePath(req.body?.remotePath || req.body?.path);
+    const localDir = resolveLocalTransferDirectory(req.body?.localDir);
     const device = await resolveDevice(req.body?.device);
     await assertNoSymlinkAncestors(remotePath, device);
     const type = await getRemoteType(remotePath, device);
     if (type === 'link') throw new Error('暂不支持拉取符号链接');
 
+    const itemName = sanitizeFilename(basename(remotePath));
+    const localPath = join(localDir, itemName);
+    if (existsSync(localPath)) {
+      if (lstatSync(localPath).isSymbolicLink()) throw new Error('本地目标不能是符号链接');
+      if (req.body?.confirmTarget !== localPath) {
+        return res.status(409).json({ success: false, requiresConfirmation: true, target: localPath, error: '本地目标已存在，请确认覆盖' });
+      }
+    }
     const task = createTransfer('pull', device, remotePath);
-    const taskDir = createTransferDirectory(task);
     void (async () => {
       try {
-        await runTransferAdb(task, adbArgs(device, ['pull', remotePath, taskDir]), '从设备拉取');
-        const itemName = sanitizeFilename(basename(remotePath));
-        const pulledPath = join(taskDir, itemName);
-        if (!existsSync(pulledPath)) throw new Error('ADB 拉取完成，但未找到本地文件');
-        let artifactPath = pulledPath;
-        let artifactName = itemName;
-        if (type === 'dir') {
-          updateTransfer(task, { phase: '打包目录', progress: null });
-          artifactName = `${itemName}.zip`;
-          artifactPath = join(taskDir, artifactName);
-          await zipDirectory(pulledPath, artifactPath);
-        }
-        registerTransferFile(task, artifactPath, artifactName);
-        updateTransfer(task, { status: 'completed', phase: '已完成', progress: 100, message: '文件已准备下载' });
+        await runTransferAdb(task, adbArgs(device, ['pull', remotePath, localDir]), '从设备拉取');
+        if (!existsSync(localPath)) throw new Error('ADB 拉取完成，但未找到本地目标文件');
+        const localStat = statSync(localPath);
+        if (type === 'file' && !localStat.isFile()) throw new Error('拉取结果不是预期文件');
+        task.localPath = localPath;
+        updateTransfer(task, { status: 'completed', phase: '已完成', progress: 100, message: `已保存到 ${localPath}` });
       } catch (error) {
         if (task.status !== 'cancelled') updateTransfer(task, { status: 'failed', phase: '失败', error: error.message });
       } finally {
@@ -644,40 +624,6 @@ app.delete('/adb/transfer/:taskId', checkAuth, (req, res) => {
     task.cleanupPaths.forEach(safeRemove);
   }
   res.json({ success: true, data: publicTransfer(task) });
-});
-
-// 文件管理器：下载已完成的临时文件
-app.get('/adb/file', checkAuth, (req, res) => {
-  const artifact = transferFiles.get(req.query.fileId);
-  if (!artifact || artifact.expiresAt <= Date.now()) {
-    return res.status(404).json({ success: false, error: '文件不存在或已过期' });
-  }
-  const root = resolve(TRANSFER_ROOT);
-  const target = resolve(artifact.filePath);
-  const relativeTarget = relative(root, target);
-  if (relativeTarget.startsWith('..') || relativeTarget.includes(':')) {
-    return res.status(403).json({ success: false, error: '文件路径无效' });
-  }
-  try {
-    const size = statSync(target).size;
-    const asciiName = artifact.fileName.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_');
-    const encodedName = encodeURIComponent(artifact.fileName);
-    res.setHeader('Content-Type', 'application/octet-stream');
-    res.setHeader('Content-Length', size);
-    res.setHeader('Content-Disposition', `attachment; filename="${asciiName}"; filename*=UTF-8''${encodedName}`);
-    const stream = createReadStream(target);
-    stream.on('error', error => {
-      if (!res.headersSent) res.status(500).json({ success: false, error: error.message });
-    });
-    stream.on('close', () => {
-      safeRemove(target);
-      transferFiles.delete(artifact.fileId);
-    });
-    stream.pipe(res);
-  } catch (error) {
-    transferFiles.delete(artifact.fileId);
-    sendRouteError(res, error, 404);
-  }
 });
 
 const uploadSingle = (req, res, next) => upload.single('file')(req, res, error => {
@@ -1015,7 +961,7 @@ wss.on('connection', (ws, req) => {
   const origin = req.headers.origin;
 
   // 验证来源
-  if (!ALLOWED_ORIGINS.includes('*') && origin && !ALLOWED_ORIGINS.includes(origin)) {
+  if (!isAllowedOrigin(origin)) {
     ws.send(JSON.stringify({ type: 'error', data: '来源不允许' }));
     ws.close();
     return;
@@ -1035,14 +981,14 @@ wss.on('connection', (ws, req) => {
     let m;
     try {
       m = JSON.parse(msg.toString());
-    } catch (e) {
+    } catch {
       return ws.send(JSON.stringify({ type: 'error', data: '无效的 JSON' }));
     }
 
     if (m.type === 'exec-stream' && m.command) {
       // 安全检查
-      if (!isCommandSafe(m.command)) {
-        ws.send(JSON.stringify({ type: 'error', data: '命令不安全或不在白名单中' }));
+      if (!isAdbCommandSafe(m.command) || requiresAdbConfirmation(m.command)) {
+        ws.send(JSON.stringify({ type: 'error', data: '实时流仅允许只读 ADB 命令；写操作请在页面确认后执行' }));
         return;
       }
 
@@ -1052,7 +998,7 @@ wss.on('connection', (ws, req) => {
         currentProcess = null;
       }
 
-      const args = parseCommand(m.command);
+      const args = parseAdbCommand(m.command);
       ws.send(JSON.stringify({ type: 'start', command: m.command }));
 
       const proc = spawn(adbPath, args.slice(1), { shell: false });
@@ -1130,7 +1076,7 @@ async function start() {
           ? `http://127.0.0.1:${actualPort}/`
           : `http://127.0.0.1:${actualPort}/setup`;
         exec(`start ${url}`);
-      } catch (e) {
+      } catch {
         // 忽略打开浏览器失败
       }
     }

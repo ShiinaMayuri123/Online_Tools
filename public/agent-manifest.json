@@ -1,4 +1,6 @@
 {
-  "latestVersion": "1.1.2",
-  "installerUrl": "/downloads/adb-agent-setup.exe"
+  "latestVersion": "1.1.3",
+  "installerUrl": "/downloads/adb-agent-setup.exe",
+  "fallbackInstallerUrl": "/download-agent.html",
+  "checksumUrl": "/downloads/SHA256SUMS.txt"
 }

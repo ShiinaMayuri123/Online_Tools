@@ -10,27 +10,26 @@ const fetchWithTimeout = (url, timeout = 5000) => {
 // ── 多源 IP 一致性校验 ──────────────────────────────────────────────────────
 const CONSISTENCY_SOURCES = [
   { id: 'ipify', label: 'ipify.org', url: 'https://api.ipify.org?format=json', parse: d => d.ip },
-  { id: 'ipapi', label: 'ip-api.com', url: 'http://ip-api.com/json/?fields=8192', parse: d => d.query },
   { id: 'ipwho', label: 'ipwho.is', url: 'https://ipwho.is/', parse: d => d.ip },
   { id: 'cf', label: 'Cloudflare', url: 'https://1.1.1.1/cdn-cgi/trace', parse: (_, text) => { const m = text.match(/ip=(.*)\n/); return m ? m[1].trim() : null; }, isText: true },
 ];
 
 // ── 风险评分计算 ─────────────────────────────────────────────────────────────
-const calcRiskScore = (ipApi, ipWho) => {
+const calcRiskScore = (ipWho) => {
   const sec = ipWho?.security || {};
   const isTor = sec.tor ?? false;
-  const proxyA = ipApi?.proxy ?? false;
+  const proxyA = false;
   const proxyB = sec.proxy ?? false;
   const proxyBoth = proxyA && proxyB;
   const proxyAny = proxyA || proxyB;
   const isVpn = sec.vpn ?? false;
-  const hostingA = ipApi?.hosting ?? false;
+  const hostingA = false;
   const hostingB = sec.hosting ?? false;
   const hostingAny = hostingA || hostingB;
   const isAnonymous = sec.anonymous ?? false;
-  const isMobile = ipApi?.mobile ?? false;
+  const isMobile = sec.mobile ?? false;
   const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const ipTz = ipApi?.timezone || ipWho?.timezone?.id || '';
+  const ipTz = ipWho?.timezone?.id || '';
   const tzMismatch = ipTz && browserTz !== ipTz;
 
   let score = 0;
@@ -85,7 +84,6 @@ const getClientInfo = () => {
 const useIpData = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [ipApi, setIpApi] = useState(null);
   const [ipWho, setIpWho] = useState(null);
   const [mainData, setMainData] = useState(null);
   const [consistency, setConsistency] = useState({});
@@ -95,13 +93,12 @@ const useIpData = () => {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setIpApi(null);
     setIpWho(null);
     setMainData(null);
     setConsistency({});
 
     try {
-      // 1. 获取本机 IP（ipify 为主，ip-api 为备用）
+      // 1. 获取本机 IP（ipify 为主，ipwho.is 为备用）
       let ip = '';
       try {
         const res = await fetchWithTimeout('https://api.ipify.org?format=json', 3000);
@@ -109,43 +106,40 @@ const useIpData = () => {
         ip = fetchedIp;
       } catch {
         try {
-          const res = await fetchWithTimeout('http://ip-api.com/json/?fields=query', 3000);
-          const { query } = await res.json();
-          ip = query;
+          const res = await fetchWithTimeout('https://ipwho.is/?security=1', 3000);
+          const fallback = await res.json();
+          ip = fallback.success ? fallback.ip : '';
         } catch {
           throw new Error('无法获取本机 IP');
         }
       }
 
-      // 2. 并发请求：ipinfo.io + ip-api.com + ipwho.is
-      const [ipinfoRes, ipapiRes, ipwhoRes] = await Promise.allSettled([
+      // 2. 并发请求：ipinfo.io + ipwho.is
+      const [ipinfoRes, ipwhoRes] = await Promise.allSettled([
         fetchWithTimeout('https://ipinfo.io/json', 4000).then(r => r.ok ? r.json() : null),
-        fetchWithTimeout(`http://ip-api.com/json/${ip}?fields=66846719&lang=zh-CN`, 5000).then(r => r.json()),
         fetchWithTimeout(`https://ipwho.is/${ip}?security=1`, 5000).then(r => r.json()),
       ]);
 
-      // 3. 处理 ipinfo.io 数据
-      const ipinfo = ipinfoRes.status === 'fulfilled' ? ipinfoRes.value : null;
-      const ipapi = ipapiRes.status === 'fulfilled' && ipapiRes.value?.status === 'success' ? ipapiRes.value : null;
+      // 3. 处理来源数据
+      const ipinfo = ipinfoRes.status === 'fulfilled' && ipinfoRes.value?.ip ? ipinfoRes.value : null;
       const ipwho = ipwhoRes.status === 'fulfilled' && ipwhoRes.value?.success ? ipwhoRes.value : null;
 
-      if (ipapi) setIpApi(ipapi);
       if (ipwho) setIpWho(ipwho);
 
-      // 4. 构建主数据（ipinfo 为主，ip-api 为备用）
+      // 4. 构建主数据（ipinfo 为主，ipwho.is 为备用）
       if (ipinfo) {
         setMainData(ipinfo);
-      } else if (ipapi) {
+      } else if (ipwho) {
         setMainData({
-          ip: ipapi.query,
-          city: ipapi.city,
-          region: ipapi.regionName,
-          country: ipapi.countryCode,
-          loc: `${ipapi.lat},${ipapi.lon}`,
-          org: ipapi.isp || ipapi.org || '',
-          timezone: ipapi.timezone,
-          postal: ipapi.zip,
-          hostname: ipapi.reverse || '',
+          ip: ipwho.ip,
+          city: ipwho.city,
+          region: ipwho.region,
+          country: ipwho.country_code,
+          loc: `${ipwho.latitude},${ipwho.longitude}`,
+          org: ipwho.connection?.isp || '',
+          timezone: ipwho.timezone?.id || '',
+          postal: ipwho.postal || '',
+          hostname: ipwho.connection?.domain || '',
         });
       } else {
         throw new Error('无法获取 IP 详情');
@@ -176,31 +170,31 @@ const useIpData = () => {
   useEffect(() => { (async () => { await fetchAll(); })(); }, [fetchAll]);
 
   // ── 派生数据 ──────────────────────────────────────────────────────────────
-  const ip = mainData?.ip || ipApi?.query || ipWho?.ip || '';
-  const country = mainData?.country || ipApi?.countryCode || ipWho?.country_code || '';
-  const city = mainData?.city || ipApi?.city || ipWho?.city || '';
-  const region = mainData?.region || ipApi?.regionName || ipWho?.region || '';
-  const org = mainData?.org || ipApi?.isp || ipWho?.connection?.isp || '';
-  const asn = ipApi?.as || (ipWho?.connection?.asn ? `AS${ipWho.connection.asn}` : '');
-  const hostname = mainData?.hostname || ipApi?.reverse || ipWho?.connection?.domain || '';
-  const timezone = mainData?.timezone || ipApi?.timezone || ipWho?.timezone?.id || '';
-  const postal = mainData?.postal || ipApi?.zip || ipWho?.postal || '';
-  const loc = mainData?.loc || (ipApi?.lat ? `${ipApi.lat},${ipApi.lon}` : '') || '';
+  const ip = mainData?.ip || ipWho?.ip || '';
+  const country = mainData?.country || ipWho?.country_code || '';
+  const city = mainData?.city || ipWho?.city || '';
+  const region = mainData?.region || ipWho?.region || '';
+  const org = mainData?.org || ipWho?.connection?.isp || '';
+  const asn = ipWho?.connection?.asn ? `AS${ipWho.connection.asn}` : '';
+  const hostname = mainData?.hostname || ipWho?.connection?.domain || '';
+  const timezone = mainData?.timezone || ipWho?.timezone?.id || '';
+  const postal = mainData?.postal || ipWho?.postal || '';
+  const loc = mainData?.loc || (ipWho ? `${ipWho.latitude},${ipWho.longitude}` : '');
   const countryCode = country || '';
   const flagEmoji = countryCode ? String.fromCodePoint(...[...countryCode.toUpperCase()].map(c => 0x1F1E6 - 65 + c.charCodeAt(0))) : '';
 
   // 网络类型
   let networkType = '标准 ISP';
-  if (ipApi?.hosting || ipWho?.security?.hosting) networkType = '数据中心';
-  if (ipApi?.mobile || ipWho?.security?.mobile) networkType = '移动网络';
+  if (ipWho?.security?.hosting) networkType = '数据中心';
+  if (ipWho?.security?.mobile) networkType = '移动网络';
 
   // 隐私标签
   let privacyTag = '纯净 IP';
-  if (ipApi?.proxy || ipWho?.security?.proxy) privacyTag = '代理/VPN';
+  if (ipWho?.security?.proxy) privacyTag = '代理/VPN';
   if (ipWho?.security?.tor) privacyTag = 'Tor 出口';
 
   // 风险评分
-  const risk = calcRiskScore(ipApi, ipWho);
+  const risk = calcRiskScore(ipWho);
 
   // 一致性结果
   const consistencyIps = Object.values(consistency).filter(v => v && v !== '失败');
@@ -211,8 +205,8 @@ const useIpData = () => {
   const hasFailure = consistencyDone && Object.values(consistency).some(v => v === '失败');
 
   // 地理位置文本
-  const locationText = ipApi
-    ? `${ipApi.country}, ${ipApi.regionName}, ${ipApi.city}`
+  const locationText = ipWho
+    ? `${ipWho.country}, ${ipWho.region}, ${ipWho.city}`
     : `${city}, ${region}, ${countryCode}`;
 
   return {
@@ -254,7 +248,6 @@ const useIpData = () => {
     hasFailure,
 
     // 原始数据（供特殊用途）
-    ipApi,
     ipWho,
     mainData,
   };

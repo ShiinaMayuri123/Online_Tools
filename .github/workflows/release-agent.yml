@@ -16,6 +16,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate release tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: powershell
+        run: |
+          $tagVersion = $env:GITHUB_REF_NAME.Substring(1)
+          $packageVersion = node -p "require('./local-agent/package.json').version"
+          if ($tagVersion -ne $packageVersion) {
+            throw "Git tag v$tagVersion does not match local-agent/package.json ($packageVersion)."
+          }
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -48,7 +58,9 @@ jobs:
 
       - name: Build installer
         shell: powershell
-        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "local-agent\installer\adb-agent.iss"'
+        run: |
+          $version = node -p "require('./local-agent/package.json').version"
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$version" "local-agent\installer\adb-agent.iss"
 
       - name: Build portable archive
         shell: powershell

@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 import { ADB_COMMANDS } from '../../config/adbCommands';
 import { ADB_SECTIONS } from '../../config/adbData';
 import AdbWorkspace from './AdbWorkspace';
 
 const AGENT_PORTS = [5038, 5039, 5040, 12553, 12554, 12555, 3001];
-const AGENT_INSTALL_HINT_KEY = 'adb_agent_install_hint';
 const AGENT_VERSION_KEY = 'adb_local_agent_version';
 const FILE_MANAGER_CAPABILITY = 'file-manager';
 
@@ -30,15 +29,8 @@ async function detectLocalAgent(timeoutMs = 500) {
       if (!healthResponse.ok) return null;
       const health = await healthResponse.json();
       if (!health.ok) return null;
-      const tokenResponse = await fetch(`http://127.0.0.1:${port}/token`, {
-        cache: 'no-store',
-        mode: 'cors',
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-      const tokenData = tokenResponse.ok ? await tokenResponse.json() : {};
       return {
         baseUrl: `http://127.0.0.1:${port}`,
-        token: tokenData.token || '',
         version: health.version || '',
         protocolVersion: health.protocolVersion || 0,
         capabilities: Array.isArray(health.capabilities) ? health.capabilities : [],
@@ -96,11 +88,10 @@ export default function AdbConsole() {
   const [agentDetecting, setAgentDetecting] = useState(true);
   const [agentVersion, setAgentVersion] = useState(() => localStorage.getItem(AGENT_VERSION_KEY) || '');
   const [agentManifest, setAgentManifest] = useState(null);
-  const [agentLaunchState, setAgentLaunchState] = useState('checking');
-  const [hasAgentInstallHint, setHasAgentInstallHint] = useState(() => localStorage.getItem(AGENT_INSTALL_HINT_KEY) === '1');
+  const [agentLaunchState, setAgentLaunchState] = useState('idle');
   const [devices, setDevices] = useState([]);
   const [connectedDevice, setConnectedDevice] = useState(null);
-  const [connectionInput, setConnectionInput] = useState('192.168.51.143');
+  const [connectionInput, setConnectionInput] = useState('');
   const [portInput, setPortInput] = useState('5555');
   const [connecting, setConnecting] = useState(false);
   const [refreshingDevices, setRefreshingDevices] = useState(false);
@@ -173,17 +164,14 @@ export default function AdbConsole() {
     }
   };
 
-  const applyAgent = (agent) => {
+  const applyAgent = (agent, token = agentToken) => {
     const baseUrl = agent?.baseUrl || null;
-    const token = agent?.token || '';
     setAgentBaseUrl(baseUrl);
     setAgentCapabilities(agent?.capabilities || []);
     setAgentVersion(agent?.version || '');
     setAgentLaunchState(baseUrl ? 'connected' : 'idle');
     if (agent?.version) localStorage.setItem(AGENT_VERSION_KEY, agent.version);
-    if (token) {
-      setAgentToken(token);
-      localStorage.setItem('adb_local_agent_token', token);
+    if (baseUrl && token) {
       connectWebSocket(baseUrl, token);
       refreshDevices(baseUrl, token);
     }
@@ -207,14 +195,8 @@ export default function AdbConsole() {
   }, []);
   /* eslint-enable react-hooks/exhaustive-deps */
 
-  const rememberAgentInstall = () => {
-    localStorage.setItem(AGENT_INSTALL_HINT_KEY, '1');
-    setHasAgentInstallHint(true);
-  };
-
   const startInstalledAgent = async () => {
     if (agentLaunchState === 'launching') return;
-    rememberAgentInstall();
     setAgentLaunchState('launching');
     setAgentDetecting(true);
     window.location.href = 'pudu-agent://start';
@@ -232,7 +214,20 @@ export default function AdbConsole() {
     addOutput('error', '连接助手未能在 15 秒内启动，请检查安装器或手动打开助手');
   };
 
-  const executeCommand = async (commandObj, builtCommand) => {
+  const pairAgent = async (value) => {
+    const token = value.trim();
+    if (!agentBaseUrl || !token) throw new Error('请输入本地代理窗口显示的 Token');
+    const response = await fetch(`${agentBaseUrl}/adb/devices`, { headers: getHeaders(token) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) throw new Error(data.error || 'Token 无效');
+    setAgentToken(token);
+    localStorage.setItem('adb_local_agent_token', token);
+    applyAgent({ baseUrl: agentBaseUrl, version: agentVersion, capabilities: agentCapabilities }, token);
+    setDevices(data.devices || []);
+    addOutput('system', '本地代理已完成配对');
+  };
+
+  const executeCommand = async (commandObj, builtCommand, confirmCommand = '') => {
     if (!agentBaseUrl) {
       addOutput('error', '请先启动现场连接助手');
       return;
@@ -243,17 +238,30 @@ export default function AdbConsole() {
       let response = await fetch(`${agentBaseUrl}/adb/exec-safe`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ commandId: commandObj?.id, rawCommand: builtCommand }),
+        body: JSON.stringify({ commandId: commandObj?.id, rawCommand: builtCommand, confirmCommand }),
       });
       if (response.status === 404) {
         response = await fetch(`${agentBaseUrl}/adb/exec`, {
           method: 'POST',
           headers: getHeaders(),
-          body: JSON.stringify({ command: builtCommand }),
+          body: JSON.stringify({ command: builtCommand, confirmCommand }),
         });
       }
-      const data = await response.json();
-      addOutput(data.success ? 'stdout' : 'error', data.stdout || data.error || data.message || '命令执行完成');
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 409 && data.requiresConfirmation) {
+        setDangerCommand({
+          command: { ...commandObj, danger: 'high', name: commandObj?.name || '自定义命令', description: data.error || '该命令可能修改设备或本机文件' },
+          builtCmd: builtCommand,
+          confirmCommand: data.confirmation || builtCommand,
+        });
+        addOutput('system', '该命令需要输入 DELETE 确认后执行');
+        return data;
+      }
+      const succeeded = response.ok && data.success === true && (data.code === undefined || data.code === 0);
+      const message = succeeded
+        ? data.stdout || data.message || '命令执行完成'
+        : data.stderr || data.error || data.stdout || `命令执行失败（${response.status}）`;
+      addOutput(succeeded ? 'stdout' : 'error', message);
       setHistory((previous) => [{
         id: String(Date.now()),
         commandId: commandObj?.id || 'custom',
@@ -261,9 +269,9 @@ export default function AdbConsole() {
         fullCmd: builtCommand,
         timestamp: new Date().toLocaleTimeString(),
         duration: Date.now() - startedAt,
-        status: data.success ? 'success' : 'error',
+        status: succeeded ? 'success' : 'error',
         output: data.stdout || '',
-        error: data.error || '',
+        error: succeeded ? '' : data.stderr || data.error || message,
       }, ...previous]);
       return data;
     } catch (error) {
@@ -273,12 +281,16 @@ export default function AdbConsole() {
     }
   };
 
-  const executeFromTerminal = (commandText, commandObj) => executeCommand(commandObj || { id: 'custom', name: '自定义命令' }, commandText);
+  const executeFromTerminal = (commandText, commandObj, confirmCommand = '') => executeCommand(commandObj || { id: 'custom', name: '自定义命令' }, commandText, confirmCommand);
   const fillTerminal = (_command, builtCommand) => setCustomCommand(builtCommand || '');
   const executeStream = (command) => websocketRef.current?.send(JSON.stringify({ type: 'exec-stream', command }));
 
   const handleConnect = async () => {
-    if (!agentBaseUrl || !connectionInput.trim()) return;
+    if (!agentBaseUrl || !agentToken) {
+      addOutput('error', '请先完成本地代理配对');
+      return;
+    }
+    if (!connectionInput.trim()) return;
     setConnecting(true);
     try {
       const response = await fetch(`${agentBaseUrl}/adb/connect`, {
@@ -334,6 +346,7 @@ export default function AdbConsole() {
     customCommand={customCommand}
     setCustomCommand={setCustomCommand}
     onExecute={executeFromTerminal}
+    onPairAgent={pairAgent}
     onFillTerminal={fillTerminal}
     onExecuteStream={executeStream}
     isRunning={isRunning}
@@ -355,9 +368,7 @@ export default function AdbConsole() {
     agentVersion={agentVersion}
     agentManifest={agentManifest}
     agentLaunchState={agentLaunchState}
-    hasAgentInstallHint={hasAgentInstallHint}
     onStartAgent={startInstalledAgent}
-    onRememberAgentInstall={rememberAgentInstall}
     onDetect={detectAgent}
     handleConnect={handleConnect}
     handleDisconnect={handleDisconnect}

@@ -47,8 +47,8 @@ Minimal、Ocean、Aurora、Neon、Sunset、Onyx、Crimson，通过 Context API �
 
 ADB 调试助手位于 `#/adb`。网页不能直接调用用户电脑上的 `adb.exe`，现场使用时需要先在笔记本上启动轻量连接助手，再由网页通过本机回环地址调用 ADB。
 
-- 连接助手自动检测本机 ADB，不需要用户配置 Node.js 或 PATH
-- 网页自动发现连接助手，不需要手动输入 Token
+- 正式安装包内含 ADB 运行文件，不需要用户配置 Node.js 或 PATH
+- 网页发现连接助手后，用户需要输入助手控制台显示的 Token 完成一次配对
 - 电脑和机器人处于同一局域网后，可输入设备 IP 建立 TCP/IP 连接
 - 命令卡片先填入终端，再由用户点击执行或按 Enter
 - 高风险命令会进行额外确认
@@ -75,7 +75,7 @@ npm run agent:install
 npm run agent
 ```
 
-Windows 发布包使用 `local-agent/build.bat` 生成。发布包中需要同时包含 `adb-agent.exe`、`adb.exe` 和 Platform Tools DLL；现场同事只需双击 `adb-agent.exe`，再打开网页即可。
+Windows 正式安装包由 GitHub Actions 生成并随 Pages 发布；现场同事安装后启动 `adb-agent.exe`，复制 Token 到网页完成配对。开发者仍可使用 `local-agent/build.bat` 生成本地构建。
 
 ## 部署配置
 

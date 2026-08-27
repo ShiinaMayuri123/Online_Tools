@@ -9,6 +9,7 @@ import { ADB_DOCUMENT_TREE, ADB_FILE_NOTES } from '../../config/adbData';
 const ROOT_PATH = '/sdcard';
 const MUTATION_ROOTS = ['/sdcard/pudu', '/sdcard/PuduRobotMap', '/sdcard/PuduRobotLog', '/sdcard/pdconfig'];
 const ROW_HEIGHT = 52;
+const LOCAL_DESTINATION_KEY = 'adb_local_destination';
 
 const APP_DESCRIPTIONS = {
   'com.pudutech.pdrobot': '机器人主控制 App',
@@ -99,7 +100,7 @@ function FileTreeNode({ path, label, treeCache, expandedPaths, onToggle, onNavig
 
 function DangerModal({ action, inputValue, onInput, onCancel, onConfirm, busy }) {
   if (!action) return null;
-  const labels = { delete: '删除', overwrite: '覆盖推送', uninstall: '卸载应用', clear: '清除应用数据' };
+  const labels = { delete: '删除', overwrite: '覆盖推送', 'pull-overwrite': '覆盖本地文件', uninstall: '卸载应用', clear: '清除应用数据' };
   const label = labels[action.kind] || '执行操作';
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" role="dialog" aria-modal="true" aria-labelledby="file-manager-danger-title">
@@ -156,6 +157,13 @@ export default function FileManager({ agentBaseUrl, agentToken, connectedDevice,
   const [dangerInput, setDangerInput] = useState('');
   const [dangerBusy, setDangerBusy] = useState(false);
   const [transfer, setTransfer] = useState(null);
+  const [localDestination, setLocalDestination] = useState(() => {
+    try {
+      return localStorage.getItem(LOCAL_DESTINATION_KEY) || '';
+    } catch {
+      return '';
+    }
+  });
   const [apps, setApps] = useState([]);
   const [appSearch, setAppSearch] = useState('');
   const [appsLoading, setAppsLoading] = useState(false);
@@ -167,7 +175,15 @@ export default function FileManager({ agentBaseUrl, agentToken, connectedDevice,
   const uploadXhrRef = useRef(null);
   const pollRef = useRef(null);
   const treeCacheRef = useRef(DOCUMENT_TREE_CACHE);
-  const canOperate = Boolean(agentBaseUrl && connectedDevice);
+  const canOperate = Boolean(agentBaseUrl && agentToken && connectedDevice);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOCAL_DESTINATION_KEY, localDestination);
+    } catch {
+      // 浏览器禁用存储时仍允许当前会话使用输入目录。
+    }
+  }, [localDestination]);
 
   const requestJson = useCallback(async (path, options = {}) => {
     if (!agentBaseUrl || !agentToken) throw new Error('本地连接助手未就绪');
@@ -309,18 +325,8 @@ export default function FileManager({ agentBaseUrl, agentToken, connectedDevice,
         if (task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled') {
           if (task.status === 'completed') {
             record(label, `${operation} ${label}`, 'success', task.message);
-            if (task.fileId) {
-              const fileResponse = await fetch(`${agentBaseUrl}/adb/file?fileId=${encodeURIComponent(task.fileId)}`, { headers: { Authorization: `Bearer ${agentToken}` } });
-              if (!fileResponse.ok) throw new Error('下载临时文件失败');
-              const blob = await fileResponse.blob();
-              const url = URL.createObjectURL(blob);
-              const anchor = document.createElement('a');
-              anchor.href = url;
-              anchor.download = task.fileName || 'adb-download';
-              anchor.click();
-              URL.revokeObjectURL(url);
-            }
-            showNotice('success', `${label}已完成`);
+            if (operation === '拉取' && !task.localPath) throw new Error('代理未确认本地文件已写入');
+            showNotice('success', task.message || `${label}已完成`);
           } else if (task.status === 'failed') {
             record(label, `${operation} ${label}`, 'error', '', task.error);
             showNotice('error', task.error || `${label}失败`);
@@ -337,15 +343,22 @@ export default function FileManager({ agentBaseUrl, agentToken, connectedDevice,
     poll();
   };
 
-  const startPull = async (path) => {
+  const startPull = async (path, confirmTarget = '') => {
     if (!canOperate) return;
+    if (!localDestination.trim()) {
+      showNotice('error', '请先填写本地保存目录');
+      return;
+    }
     setContextMenu(null);
     try {
-      const data = await requestJson('/adb/pull', { method: 'POST', body: JSON.stringify({ remotePath: path, device: connectedDevice }) });
+      const data = await requestJson('/adb/pull', { method: 'POST', body: JSON.stringify({ remotePath: path, localDir: localDestination.trim(), device: connectedDevice, confirmTarget }) });
       setTransfer({ taskId: data.taskId, status: 'queued', progress: 0, phase: '等待执行', label: path });
       startPolling(data.taskId, '拉取', path);
     } catch (error) {
-      showNotice('error', error.message);
+      if (error.status === 409 && error.data?.requiresConfirmation) {
+        setDangerInput('');
+        setDangerAction({ kind: 'pull-overwrite', target: error.data.target, path });
+      } else showNotice('error', error.message);
     }
   };
 
@@ -454,6 +467,11 @@ export default function FileManager({ agentBaseUrl, agentToken, connectedDevice,
         startPushUpload(dangerAction.file, dangerAction.remoteDir, dangerAction.target);
         return;
       }
+      if (dangerAction.kind === 'pull-overwrite') {
+        setDangerAction(null);
+        startPull(dangerAction.path, dangerAction.target);
+        return;
+      }
       if (dangerAction.kind === 'delete') {
         const data = await requestJson('/adb/rm', { method: 'POST', body: JSON.stringify({ path: dangerAction.path, device: connectedDevice, confirmTarget: dangerAction.target }) });
         record('删除', `adb rm -rf ${dangerAction.path}`, 'success', data.stdout || '删除完成');
@@ -509,6 +527,7 @@ export default function FileManager({ agentBaseUrl, agentToken, connectedDevice,
 
       {!connectedDevice && <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">当前显示文档中的设备文件夹结构参考；连接设备后将替换为实时目录，拉取、推送和删除等设备操作已禁用。</div>}
       {notice && <div role="status" className={`rounded-lg border px-4 py-3 text-sm ${notice.type === 'error' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>{notice.message}</div>}
+      {activeView === 'files' && <label className="block rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">本地保存目录<input value={localDestination} onChange={event => setLocalDestination(event.target.value)} placeholder="例如 D:\\Logs" className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 font-mono text-xs text-slate-700 outline-none focus:border-blue-400" /><span className="mt-1 block text-[11px] text-slate-400">拉取由本地代理直接写入该已存在目录，任务完成后才会显示成功。</span></label>}
 
       {activeView === 'files' ? (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[230px_minmax(0,1fr)]">

@@ -1,5 +1,7 @@
 #define MyAppName "Pudu ADB Agent"
-#define MyAppVersion "1.1.2"
+#ifndef MyAppVersion
+  #define MyAppVersion "0.0.0"
+#endif
 #define MyAppPublisher "Pudu"
 #define MyAppExeName "adb-agent.exe"
 
@@ -19,6 +21,8 @@ Compression=lzma
 SolidCompression=yes
 Uninstallable=yes
 WizardStyle=modern
+CloseApplications=yes
+RestartApplications=no
 
 [Files]
 Source: "..\dist\adb-agent.exe"; DestDir: "{app}"; Flags: ignoreversion

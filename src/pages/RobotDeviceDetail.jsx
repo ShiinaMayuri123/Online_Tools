@@ -7,7 +7,7 @@ import ToolLayout from '../components/common/ToolLayout';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
 import useClipboard from '../hooks/useClipboard';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../hooks/useTheme';
 
 /**
  * RobotDeviceDetail: 设备详情页

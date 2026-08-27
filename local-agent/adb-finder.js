@@ -33,7 +33,7 @@ export function findAdb() {
       console.log(`[ADB] 在 PATH 中找到: ${adbPath}`);
       return 'adb';
     }
-  } catch (e) {
+  } catch {
     // PATH 中未找到，继续检查
   }
 
@@ -75,7 +75,7 @@ export function checkAdbAvailable(adbPath) {
   try {
     execSync(`${adbPath} version`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 }

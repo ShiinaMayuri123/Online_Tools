@@ -78,8 +78,8 @@ export const ADB_SECTIONS = [
       { cmd: 'adb logcat', desc: '实时查看日志', status: 'ok' },
       { cmd: 'adb logcat -d', desc: '导出当前日志缓冲区', status: 'ok' },
       { cmd: 'adb logcat *:E', desc: '仅显示错误级别日志', status: 'ok' },
-      { cmd: 'adb logcat | grep -i "keyword"', desc: '过滤关键词日志', status: 'ok' },
-      { cmd: 'adb logcat -d > file.txt', desc: '导出日志到文件', status: 'ok' },
+      { cmd: 'adb shell logcat | grep -i "keyword"', desc: '过滤关键词日志', status: 'ok' },
+      { cmd: 'adb logcat -d', desc: '导出当前日志缓冲区', status: 'ok' },
       { cmd: 'adb logcat -c', desc: '清除内存日志缓冲区', status: 'ok' },
     ],
   },
@@ -148,10 +148,10 @@ export const TROUBLESHOOTING_FLOWS = [
     title: '导航异常',
     icon: Stethoscope,
     steps: [
-      { cmd: 'adb logcat | grep -i "navigation"', desc: '导航日志' },
-      { cmd: 'adb logcat | grep -i "localization"', desc: '定位日志' },
-      { cmd: 'adb logcat | grep -i "map"', desc: '地图日志' },
-      { cmd: 'adb logcat | grep -i "planner"', desc: '路径规划日志' },
+      { cmd: 'adb shell logcat | grep -i "navigation"', desc: '导航日志' },
+      { cmd: 'adb shell logcat | grep -i "localization"', desc: '定位日志' },
+      { cmd: 'adb shell logcat | grep -i "map"', desc: '地图日志' },
+      { cmd: 'adb shell logcat | grep -i "planner"', desc: '路径规划日志' },
     ],
   },
   {
@@ -161,7 +161,7 @@ export const TROUBLESHOOTING_FLOWS = [
     steps: [
       { cmd: 'adb shell ls /dev | grep tty', desc: '查看串口设备' },
       { cmd: 'adb shell dmesg | grep tty', desc: '查看内核串口日志（需root）' },
-      { cmd: 'adb logcat | grep -i "lidar"', desc: '雷达日志' },
+      { cmd: 'adb shell logcat | grep -i "lidar"', desc: '雷达日志' },
     ],
   },
   {
@@ -169,9 +169,9 @@ export const TROUBLESHOOTING_FLOWS = [
     title: '底盘不动',
     icon: Stethoscope,
     steps: [
-      { cmd: 'adb logcat | grep -i "chassis"', desc: '底盘日志' },
-      { cmd: 'adb logcat | grep -i "motor"', desc: '电机日志' },
-      { cmd: 'adb logcat | grep -i "can"', desc: 'CAN 总线日志' },
+      { cmd: 'adb shell logcat | grep -i "chassis"', desc: '底盘日志' },
+      { cmd: 'adb shell logcat | grep -i "motor"', desc: '电机日志' },
+      { cmd: 'adb shell logcat | grep -i "can"', desc: 'CAN 总线日志' },
     ],
   },
   {
@@ -180,7 +180,7 @@ export const TROUBLESHOOTING_FLOWS = [
     icon: Battery,
     steps: [
       { cmd: 'adb shell dumpsys battery', desc: '查看电池状态' },
-      { cmd: 'adb logcat | grep -i "battery"', desc: '电池日志' },
+      { cmd: 'adb shell logcat | grep -i "battery"', desc: '电池日志' },
     ],
   },
   {
@@ -188,9 +188,9 @@ export const TROUBLESHOOTING_FLOWS = [
     title: '保存现场日志',
     icon: FileText,
     steps: [
-      { cmd: 'adb logcat -d > logcat.txt', desc: '导出系统日志' },
-      { cmd: 'adb shell dumpsys battery > battery.txt', desc: '导出电池信息' },
-      { cmd: 'adb shell ifconfig wlan0 > network.txt', desc: '导出网络信息' },
+      { cmd: 'adb logcat -d', desc: '读取系统日志' },
+      { cmd: 'adb shell dumpsys battery', desc: '读取电池信息' },
+      { cmd: 'adb shell ifconfig wlan0', desc: '读取网络信息' },
     ],
   },
   {
@@ -210,11 +210,11 @@ export const TROUBLESHOOTING_FLOWS = [
     title: '应用崩溃',
     icon: Package,
     steps: [
-      { cmd: 'adb logcat -d *:E | grep -i "fatal\\|crash\\|anr"', desc: '查看崩溃日志' },
+      { cmd: 'adb shell logcat -d *:E | grep -i "fatal\\|crash\\|anr"', desc: '查看崩溃日志' },
       { cmd: 'adb shell dumpsys activity activities', desc: '查看 Activity 栈' },
       { cmd: 'adb shell am force-stop <包名>', desc: '强制停止应用' },
       { cmd: 'adb shell monkey -p <包名> -c android.intent.category.LAUNCHER 1', desc: '重新启动应用' },
-      { cmd: 'adb bugreport > bugreport.zip', desc: '导出完整 bug 报告' },
+      { cmd: 'adb bugreport', desc: '导出完整 bug 报告' },
     ],
   },
   {
@@ -236,7 +236,7 @@ export const TROUBLESHOOTING_FLOWS = [
     steps: [
       { cmd: 'adb shell ls /dev/video*', desc: '查看视频设备' },
       { cmd: 'adb shell lsusb', desc: '查看 USB 设备（相机通常为 USB 设备）' },
-      { cmd: 'adb logcat | grep -i "camera\\|rgbd\\|depth"', desc: '查看相机相关日志' },
+      { cmd: 'adb shell logcat | grep -i "camera\\|rgbd\\|depth"', desc: '查看相机相关日志' },
       { cmd: 'adb shell am start -n com.pudutech.rgbdviewer/.MainActivity', desc: '打开深度相机查看器' },
     ],
   },
@@ -247,7 +247,7 @@ export const TROUBLESHOOTING_FLOWS = [
     steps: [
       { cmd: 'adb shell dumpsys audio', desc: '查看音频系统状态' },
       { cmd: 'adb shell settings get system volume_music', desc: '查看媒体音量' },
-      { cmd: 'adb logcat | grep -i "audio\\|sound\\|speaker"', desc: '查看音频日志' },
+      { cmd: 'adb shell logcat | grep -i "audio\\|sound\\|speaker"', desc: '查看音频日志' },
       { cmd: 'adb shell am start -a android.intent.action.VIEW -d file:///sdcard/test.mp3 -t audio/mp3', desc: '测试音频播放' },
     ],
   },
@@ -256,8 +256,8 @@ export const TROUBLESHOOTING_FLOWS = [
     title: '定位不准',
     icon: Network,
     steps: [
-      { cmd: 'adb logcat | grep -i "localization\\|position\\|slam"', desc: '查看定位日志' },
-      { cmd: 'adb logcat | grep -i "lidar\\|scan\\|match"', desc: '查看雷达匹配日志' },
+      { cmd: 'adb shell logcat | grep -i "localization\\|position\\|slam"', desc: '查看定位日志' },
+      { cmd: 'adb shell logcat | grep -i "lidar\\|scan\\|match"', desc: '查看雷达匹配日志' },
       { cmd: 'adb shell ls /sdcard/pudu/maps/', desc: '查看地图文件' },
       { cmd: 'adb shell dumpsys sensorservice', desc: '查看传感器状态' },
     ],
