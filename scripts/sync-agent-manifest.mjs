@@ -15,6 +15,7 @@ if (!setupScript.includes(`$AgentVersion = '${agentPackage.version}'`)) {
 const manifest = {
   latestVersion: agentPackage.version,
   installerUrl: '/downloads/adb-agent-setup.exe',
+  portableUrl: '/downloads/adb-agent-portable.zip',
   fallbackInstallerUrl: '/download-agent.html',
   checksumUrl: '/downloads/SHA256SUMS.txt',
 };

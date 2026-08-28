@@ -242,6 +242,36 @@
       <p id="download-status" role="status" aria-live="polite"></p>
     </div>
 
+    <!-- 便携版兜底 -->
+    <div id="portable" class="section section-2">
+      <div class="section-header">
+        <div class="section-icon">🧰</div>
+        <div>
+          <h3>便携版（可直接使用）</h3>
+          <p>正式安装器尚未提供时，下载、解压并双击运行即可继续。</p>
+        </div>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <span class="step-num">1</span>
+          <span>下载并解压 <code class="code">adb-agent-portable.zip</code>。</span>
+        </div>
+        <div class="step">
+          <span class="step-num">2</span>
+          <span>保持压缩包内文件在同一文件夹，双击 <code class="code">adb-agent.exe</code>。</span>
+        </div>
+        <div class="step">
+          <span class="step-num">3</span>
+          <span>从本地代理窗口复制 Token，返回 ADB 调试助手完成配对。</span>
+        </div>
+      </div>
+      <div class="btn-group">
+        <button type="button" class="btn btn-primary" data-download="/downloads/adb-agent-portable.zip">
+          📦 下载便携版
+        </button>
+      </div>
+    </div>
+
     <!-- 开发备用 -->
     <div class="section section-1">
       <div class="section-header">
@@ -274,7 +304,7 @@
         <li>当前安装器尚未签名，Windows SmartScreen 提示需要由发布方配置代码签名证书后才能消除</li>
         <li>防火墙弹窗请选择"允许访问"（专用网络）</li>
         <li>程序只监听 <code class="code">127.0.0.1</code>，安全可靠</li>
-        <li>如果下载链接不存在，说明当前站点尚未发布对应版本，请联系发布方完成 GitHub Actions 部署</li>
+        <li>正式安装器不可用时，下载上方便携版即可继续，不需要等待安装器</li>
       </ul>
     </div>
 
@@ -309,7 +339,9 @@
         }
         window.location.assign(fileUrl);
       } catch {
-        downloadStatus.textContent = '当前站点尚未发布该文件，请联系发布方完成 GitHub Actions 部署。';
+        downloadStatus.textContent = fileUrl.includes('portable')
+          ? '当前站点尚未提供便携版，请稍后重试。'
+          : '当前站点暂未提供正式安装器，请下载下方便携版继续。';
       } finally {
         button.disabled = false;
       }

@@ -57,12 +57,24 @@ jobs:
           $version = node -p "require('./local-agent/package.json').version"
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$version" "local-agent\installer\adb-agent.iss"
 
+      - name: 构建便携版
+        shell: powershell
+        run: |
+          $files = Get-ChildItem local-agent\dist -File | Where-Object { $_.Name -in @('adb-agent.exe', 'adb.exe', 'AdbWinApi.dll', 'AdbWinUsbApi.dll') }
+          if ($files.Count -ne 4) {
+            throw '便携版缺少 ADB 运行文件。'
+          }
+          Compress-Archive -Path $files.FullName -DestinationPath local-agent\dist\adb-agent-portable.zip -Force
+
       - name: 生成安装包校验和
         shell: powershell
         run: |
           Get-FileHash local-agent\dist\adb-agent-setup.exe -Algorithm SHA256 |
             ForEach-Object { "$($_.Hash)  adb-agent-setup.exe" } |
             Set-Content local-agent\dist\SHA256SUMS.txt
+          Get-FileHash local-agent\dist\adb-agent-portable.zip -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash)  adb-agent-portable.zip" } |
+            Add-Content local-agent\dist\SHA256SUMS.txt
 
       - name: 上传网站下载文件
         uses: actions/upload-artifact@v4
@@ -70,6 +82,7 @@ jobs:
           name: adb-agent-release
           path: |
             local-agent/dist/adb-agent-setup.exe
+            local-agent/dist/adb-agent-portable.zip
             local-agent/dist/SHA256SUMS.txt
           if-no-files-found: error
 
