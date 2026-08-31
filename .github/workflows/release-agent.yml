@@ -74,8 +74,8 @@ jobs:
       - name: Generate checksums
         shell: powershell
         run: |
-          Get-FileHash local-agent\dist\adb-agent-setup.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash)  adb-agent-setup.exe" } | Set-Content local-agent\dist\SHA256SUMS.txt
-          Get-FileHash local-agent\dist\adb-agent-portable.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash)  adb-agent-portable.zip" } | Add-Content local-agent\dist\SHA256SUMS.txt
+          Get-FileHash local-agent\dist\adb-agent-setup.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash)  adb-agent-setup.exe" } | Set-Content local-agent\dist\SHA256SUMS.txt -Encoding ascii
+          Get-FileHash local-agent\dist\adb-agent-portable.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash)  adb-agent-portable.zip" } | Add-Content local-agent\dist\SHA256SUMS.txt -Encoding ascii
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
