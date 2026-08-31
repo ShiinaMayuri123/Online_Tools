@@ -17,12 +17,10 @@ await execFileAsync(process.execPath, [join(rootDir, 'scripts', 'sync-agent-mani
 const agentPackage = JSON.parse(await readFile(packagePath, 'utf8'));
 const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
 const downloadPage = await readFile(downloadPagePath, 'utf8');
-const releaseUrl = `https://github.com/ShiinaMayuri123/Online_Tools/releases/download/v${agentPackage.version}`;
-
-test('agent manifest uses versioned GitHub Release assets', () => {
-  assert.equal(manifest.installerUrl, `${releaseUrl}/adb-agent-setup.exe`);
-  assert.equal(manifest.portableUrl, `${releaseUrl}/adb-agent-portable.zip`);
-  assert.equal(manifest.checksumUrl, `${releaseUrl}/SHA256SUMS.txt`);
+test('agent manifest uses the Pages download directory', () => {
+  assert.equal(manifest.installerUrl, '/downloads/adb-agent-setup.exe');
+  assert.equal(manifest.portableUrl, '/downloads/adb-agent-portable.zip');
+  assert.equal(manifest.checksumUrl, '/downloads/SHA256SUMS.txt');
 });
 
 test('download page resolves download URLs from the agent manifest', () => {
