@@ -36,7 +36,7 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "--
 [Registry]
 Root: HKCU; Subkey: "Software\Classes\pudu-agent"; ValueType: string; ValueName: ""; ValueData: "URL:Pudu Agent Protocol"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Classes\pudu-agent"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Flags: uninsdeletevalue
-Root: HKCU; Subkey: "Software\Classes\pudu-agent\shell\open\command"; ValueType: string; ValueName: ""; ValueData: "\"{app}\{#MyAppExeName}\" --protocol-start --no-browser \"%1\""
+Root: HKCU; Subkey: "Software\Classes\pudu-agent\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" --protocol-start --no-browser ""%1"""
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Parameters: "--no-browser"; Description: "启动现场连接助手"; Flags: nowait postinstall skipifsilent

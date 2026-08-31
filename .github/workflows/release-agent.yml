@@ -48,6 +48,10 @@ jobs:
         working-directory: local-agent
         run: npm ci
 
+      - name: Validate installer script
+        working-directory: local-agent
+        run: npm test
+
       - name: Build agent
         working-directory: local-agent
         run: npm run build

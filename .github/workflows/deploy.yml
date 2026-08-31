@@ -43,6 +43,10 @@ jobs:
         working-directory: local-agent
         run: npm ci
 
+      - name: 校验安装器脚本
+        working-directory: local-agent
+        run: npm test
+
       - name: 构建助手
         working-directory: local-agent
         run: npm run build
