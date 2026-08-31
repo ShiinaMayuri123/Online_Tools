@@ -22,7 +22,7 @@
 | ADB-07 | 项目代码 | `setup.ps1`、下载页和旧 BAT 脚本从 `main` 下载源码或远程执行，版本不可复现。 | PowerShell 改为固定 1.1.3 Release 安装器并校验 SHA-256；下载页只提供正式安装器；旧 BAT 只输出迁移提示。 | 已修复，待发布 | 不再出现 `main.zip` 或 `irm ... main ... | iex`；版本不一致时构建失败。 | 生成 GitHub Release v1.1.3。 |
 | ADB-08 | 项目代码 | 用户说明曾写“自动获取 Token”，与已收紧的代理安全模型冲突。 | README、快速开始和结构说明改为用户手动配对；移除未引用的旧引导组件。 | 已修复 | 文档、页面和接口行为一致，`/token` 不可用。 | 无。 |
 | PERF-01 | 项目观察 | Vite 仍提示默认入口超过 500 KB（546 KB，gzip 168 KB）。ADB 页面已独立懒加载为 100 KB（gzip 29 KB），本轮未复现加载故障。 | 记录为 P2 性能观察，不通过提高告警阈值掩盖；需要真实网络性能数据后再拆包。 | 未证实为闭环卡点 | 在目标网络采集 LCP、TBT 和首包体积，再决定是否继续拆分默认入口。 | 生产性能数据。 |
-| DEP-01 | 发布部署 | Pages 工作流曾成功但自定义域名的 `/downloads/*` 返回 HTML 首页，用户不会得到安装包。 | 工作流改为下载 artifact 到临时目录后显式查找、扁平化复制，并校验 EXE/ZIP 文件头和 ASCII SHA-256 清单；已修复 Windows PowerShell 与 Ubuntu 之间的编码契约。 | 项目已修复，待部署 | Pages 的三个下载 URL 分别返回 EXE、ZIP 和文本校验文件。 | 推送并重新运行 Pages 工作流。 |
+| DEP-01 | 发布部署 | Pages 工作流曾成功但自定义域名的 `/downloads/*` 返回 HTML 首页，用户不会得到安装包。 | 工作流改为下载 artifact 到临时目录后显式查找、扁平化复制，并校验 EXE/ZIP 文件头和跨平台兼容的 SHA-256 清单；已处理 Windows ASCII/CRLF 与 Ubuntu 校验差异。 | 项目已修复，待部署 | Pages 的三个下载 URL 分别返回 EXE、ZIP 和文本校验文件。 | 推送并重新运行 Pages 工作流。 |
 | DEP-02 | 云端部署 | `firestore.rules` 已改，但线上规则尚未更新。 | 未执行，避免修改云端权限。 | 待执行 | 认证用户可访问 `devices`；不能修改自身 role。 | Firebase 项目权限。 |
 | DEP-03 | 部署配置 | 本地代理严格 CORS；生产站点 Origin 未配置将被拒绝。 | 未执行，生产域名未知。 | 待提供 | `AGENT_ALLOWED_ORIGINS` 包含实际 HTTPS Origin，非白名单仍为 403。 | 生产站点域名。 |
 | DEP-04 | 发布安全 | 未签名 Windows 安装器可能触发 SmartScreen。 | 不能通过代码消除，下载页已如实提示。 | 阻塞 | 安装器使用受信任证书签名。 | 代码签名证书和 CI Secret。 |
