@@ -67,10 +67,9 @@ jobs:
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$version" "local-agent\installer\adb-agent.iss"
 
       - name: Build portable archive
-        shell: powershell
-        run: |
-          $files = Get-ChildItem local-agent\dist -File | Where-Object { $_.Name -in @('adb-agent.exe', 'adb.exe', 'AdbWinApi.dll', 'AdbWinUsbApi.dll') }
-          Compress-Archive -Path $files.FullName -DestinationPath local-agent\dist\adb-agent-portable.zip -Force
+        working-directory: local-agent
+        shell: pwsh
+        run: ./build-portable.ps1
 
       - name: Generate checksums
         shell: powershell

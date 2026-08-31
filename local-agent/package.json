@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node index.js",
     "test": "node --test installer/adb-agent.test.mjs",
+    "build:portable": "pwsh -NoProfile -File build-portable.ps1",
     "build": "npm run prepare:adb && npm run bundle && pkg build/index.cjs --targets node18-win-x64 --output dist/adb-agent.exe",
     "bundle": "node bundle-agent.mjs",
     "prepare:adb": "node prepare-adb.mjs",

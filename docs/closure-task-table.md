@@ -27,6 +27,7 @@
 | DEP-03 | 部署配置 | 本地代理严格 CORS；生产站点 Origin 未配置将被拒绝。 | 未执行，生产域名未知。 | 待提供 | `AGENT_ALLOWED_ORIGINS` 包含实际 HTTPS Origin，非白名单仍为 403。 | 生产站点域名。 |
 | DEP-04 | 发布安全 | 未签名 Windows 安装器可能触发 SmartScreen。 | 不能通过代码消除，下载页已如实提示。 | 阻塞 | 安装器使用受信任证书签名。 | 代码签名证书和 CI Secret。 |
 | DEP-05 | 发布流水线 | Inno Setup 编译在注册表协议命令处因 `\"` 引号写法中止，导致安装器和 Pages 部署均失败。 | 已将 `.iss` 改为 Inno Setup 的 `""` 引号转义，并新增 `npm test` 回归检查；本机未安装 ISCC，未伪造本地编译结果。 | 已修复，待 CI 重跑 | Actions 的安装器步骤通过，生成 `adb-agent-setup.exe`。 | GitHub Actions 重跑。 |
+| DEP-06 | 发布流水线 | 便携版构建步骤中的中文 `throw` 文案在 Windows Runner 临时 PowerShell 文件中编码损坏，阻断 Pages 部署。 | 已将便携版校验与打包提取为仓库内纯 ASCII `local-agent/build-portable.ps1`，两个工作流统一调用；文件列表强制为数组并逐项校验缺失文件。 | 已修复，待 CI 重跑 | Pages 和 Release 均生成 `adb-agent-portable.zip`。 | GitHub Actions 重跑。 |
 | E2E-01 | 浏览器验收 | API 已实机通过，但尚未从浏览器完整走完配对、连接、浏览、拉取与错误显示。 | 未输入 Token，避免未经确认传输本机凭证。 | 等待授权 | 页面拉取到 `123`，失败命令显示 stderr。 | 用户在当前页面主动输入 Token。 |
 | ENV-01 | 设备/本机环境 | 设备 `192.168.51.134:5555`、ADB Agent 是否运行、网络可达性会随现场变化。 | 曾通过 1.1.3 代理浏览 `/sdcard/pudu/log`（641 项）并完成一次 400 B 拉取；当前代理已停止。 | 非项目缺陷 | 重新启动代理后，`adb connect` 与目录浏览成功。 | 设备开机、同网段、无线 ADB 开启、代理运行。 |
 
