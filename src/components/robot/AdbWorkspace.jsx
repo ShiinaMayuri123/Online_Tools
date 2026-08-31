@@ -63,10 +63,22 @@ export default function AdbWorkspace({
     if (installerChecking) return;
     setInstallerChecking(true);
     try {
+      const isCrossOrigin = new URL(installerUrl, window.location.href).origin !== window.location.origin;
+      if (isCrossOrigin) {
+        window.location.assign(installerUrl);
+        return;
+      }
+
       const response = await fetch(installerUrl, { method: 'HEAD', cache: 'no-store' });
       const contentType = response.headers.get('content-type') || '';
       if (response.ok && !contentType.includes('text/html')) {
         window.location.assign(installerUrl);
+        return;
+      }
+
+      const isPortableCrossOrigin = new URL(portableUrl, window.location.href).origin !== window.location.origin;
+      if (isPortableCrossOrigin) {
+        window.location.assign(portableUrl);
         return;
       }
 

@@ -85,3 +85,15 @@ jobs:
             local-agent/dist/adb-agent-setup.exe
             local-agent/dist/adb-agent-portable.zip
             local-agent/dist/SHA256SUMS.txt
+
+      - name: Verify published release downloads
+        shell: pwsh
+        run: |
+          $releaseUrl = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}"
+          $files = @('adb-agent-setup.exe', 'adb-agent-portable.zip', 'SHA256SUMS.txt')
+          foreach ($file in $files) {
+            $result = & curl.exe --fail --silent --show-error --location --output NUL --write-out '%{http_code} %{content_type}' "$releaseUrl/$file"
+            if ($LASTEXITCODE -ne 0 -or $result -match 'text/html') {
+              throw "Release download validation failed: $file ($result)"
+            }
+          }

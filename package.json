@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "test:agent-manifest": "node --test scripts/agent-manifest.test.mjs",
     "preview": "vite preview",
     "server": "node server/index.js",
     "agent": "cd local-agent && npm start",

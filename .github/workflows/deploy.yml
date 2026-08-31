@@ -105,6 +105,9 @@ jobs:
       - name: 安装依赖
         run: npm ci
 
+      - name: 校验发布链接配置
+        run: npm run test:agent-manifest
+
       - name: 放置助手安装包
         uses: actions/download-artifact@v4
         with:

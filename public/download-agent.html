@@ -232,10 +232,10 @@
         </div>
       </div>
       <div class="btn-group">
-        <button type="button" class="btn btn-success" data-download="/downloads/adb-agent-setup.exe">
+        <button type="button" class="btn btn-success" data-download-key="installerUrl">
           📥 下载正式安装器
         </button>
-        <button type="button" class="btn btn-primary" data-download="/downloads/SHA256SUMS.txt">
+        <button type="button" class="btn btn-primary" data-download-key="checksumUrl">
           查看 SHA-256
         </button>
       </div>
@@ -266,7 +266,7 @@
         </div>
       </div>
       <div class="btn-group">
-        <button type="button" class="btn btn-primary" data-download="/downloads/adb-agent-portable.zip">
+        <button type="button" class="btn btn-primary" data-download-key="portableUrl">
           📦 下载便携版
         </button>
       </div>
@@ -327,27 +327,37 @@
     const downloadStatus = document.getElementById('download-status');
 
     async function downloadReleaseFile(button) {
-      const fileUrl = button.dataset.download;
       button.disabled = true;
       downloadStatus.textContent = '正在检查发布文件...';
 
       try {
-        const response = await fetch(fileUrl, { method: 'HEAD', cache: 'no-store' });
-        const contentType = response.headers.get('content-type') || '';
-        if (!response.ok || contentType.includes('text/html')) {
-          throw new Error('发布文件不可用');
+        const manifestResponse = await fetch('/agent-manifest.json', { cache: 'no-store' });
+        if (!manifestResponse.ok) {
+          throw new Error('无法读取发布清单');
         }
+
+        const manifest = await manifestResponse.json();
+        const fileUrl = manifest[button.dataset.downloadKey];
+        if (typeof fileUrl !== 'string' || !fileUrl) throw new Error('发布文件地址无效');
+
+        const isCrossOrigin = new URL(fileUrl, window.location.href).origin !== window.location.origin;
+        if (!isCrossOrigin) {
+          const response = await fetch(fileUrl, { method: 'HEAD', cache: 'no-store' });
+          const contentType = response.headers.get('content-type') || '';
+          if (!response.ok || contentType.includes('text/html')) throw new Error('发布文件不可用');
+        }
+
         window.location.assign(fileUrl);
       } catch {
-        downloadStatus.textContent = fileUrl.includes('portable')
+        downloadStatus.textContent = button.dataset.downloadKey === 'portableUrl'
           ? '当前站点尚未提供便携版，请稍后重试。'
-          : '当前站点暂未提供正式安装器，请下载下方便携版继续。';
+          : '当前站点暂未提供发布文件，请稍后重试。';
       } finally {
         button.disabled = false;
       }
     }
 
-    document.querySelectorAll('[data-download]').forEach((button) => {
+    document.querySelectorAll('[data-download-key]').forEach((button) => {
       button.addEventListener('click', () => downloadReleaseFile(button));
     });
   </script>
